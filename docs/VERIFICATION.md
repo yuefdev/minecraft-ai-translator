@@ -7,8 +7,9 @@ sınanmadığını ayırır. Sınanmayan hiçbir şey "doğrulanmış" olarak li
 
 1. **Birim testleri (`core/`)** – Minecraft'tan bağımsız çeviri motoru: maskeleme (`%s`, `%d`, `{name}`, `§` renk
    kodları, URL'ler, Patchouli `$(...)` komutları, FTB `{@pagebreak}`), metin analizi, sözlük, önbellek, düzeltmeler,
-   sağlayıcı yanıt doğrulama, hız sınırı/yeniden deneme, API anahtarının dosyalara/loglara sızmaması. Ağ yerine yerel
-   bir **sahte OpenAI uyumlu sunucu** kullanılır. 118 test yöntemi; CI'da `./gradlew -p core test`.
+   sağlayıcı yanıt doğrulama, hız sınırı/yeniden deneme, API anahtarının dosyalara/loglara sızmaması, ücretsiz hizmet
+   seçimi (anahtardan), anahtarsız Google istek biçimi, kota/yedek model, kısa metinlerin tek istekte birleşmesi. Ağ
+   yerine yerel **sahte sunucular** kullanılır. 140 test; CI'da `./gradlew -p core test`.
 2. **Derleme** – her sürüm modülü kendi Gradle/Java sürümüyle CI'da derlenir (1.20.1 için `./gradlew :forge:build`,
    Windows karşılığı `gradlew.bat :forge:build`).
 3. **Oyun başlatma testi (duman testi)** – CI'da **gerçek Minecraft istemcisi** başlatılır (Xvfb sanal ekran + Mesa
@@ -21,6 +22,11 @@ sınanmadığını ayırır. Sınanmayan hiçbir şey "doğrulanmış" olarak li
 
    **"Her modu çevirme" denetimleri** hiçbir mod adını bilmez: Türkçe dosyası olmayan bir dil anahtarının değeri
    (`I18n.get`) ve listede olmayan bir ekrandaki koda gömülü İngilizce yazı kendiliğinden çevrilmelidir.
+4. **Gerçek kurulum testi (1.12.2)** – geliştirme ortamı değil: **oyuncunun indireceği jar** (`…-forge.jar`), gerçek bir
+   Forge 1.12.2 kurulumunun `mods/` klasörüne konur (portablemc başlatıcısı ile kurulur) ve oyun açılır. CurseForge'daki
+   gerçek BetterQuesting, FTB Quests, Patchouli dosyalarıyla ve onlarsız iki kez. İş akışı: `prod-1122.yml`.
+5. **Canlı ücretsiz hizmet denetimi** – tipik modpaketi metinleri tüm hattan geçirilip **gerçek** anahtarsız Google
+   Çeviri'ye gönderilir ve Türkçe sonuçlar yazdırılır (`live-free.yml`, `LiveFreeServicesTest`).
 
 İş akışları: `.github/workflows/forge-build.yml` (1.20.1 derleme + birim testleri), `smoke.yml` (1.20.1 oyun
 başlatma), `versions.yml` (diğer sürümler: derleme + oyun başlatma).
@@ -39,12 +45,24 @@ Durum işaretleri: ✅ CI'da geçti · ❌ CI'da başarısız · ⏳ sonuç bekl
 | 1.21.1 NeoForge | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | 26.1.2 NeoForge | ✅ | ✅ | ✅ | ✅ | ✅ | — (Patchouli bu sürüme çıkmadı) | — |
 
+## Gerçek kurulum ve canlı hizmet sonuçları
+
+* **1.12.2 gerçek kurulum (yayın jar'ı):** ✅ modsuz ve ✅ BetterQuesting + FTB Quests + Patchouli ile. Oyun ana menüye
+  geldi, coremod jar'ın manifest'inden yüklendi, tüm denetimler geçti (dil dosyası, ekrandaki sabit yazı, üç mod).
+* **Anahtarsız Google Çeviri, canlı:** ✅ örnek çıktılar: "Kill the Ender Dragon and collect its egg." →
+  "Ender Ejderhasını öldür ve yumurtasını topla."; renk kodları (`§6…§r`), Patchouli komutları (`$(item)…$()`)
+  ve `%s` korundu. Küçük kusurlar görüldü (ör. "%s FE" → "%sFE", hitapta "siz/sen" karışması).
+* **Gemini / Groq / Mistral / OpenRouter:** gerçek hizmete karşı **sınanmadı** (CI'da anahtar yok). İstek/yanıt biçimi,
+  kota hatası (429, günlük kota), yedek modele geçiş ve reddedilen parametrenin atılması yerel sahte sunucuyla birim
+  testlerinde doğrulandı. Model adları ve ücretsiz sınırlar Ekim 2026 araştırmasına dayanır; Google günlük sınır
+  sayılarını artık yayımlamıyor, bu yüzden sayılar kesin değildir.
+
 ## Doğrulanmayanlar (açıkça)
 
 * **Gözle görsel kontrol yapılmadı.** Testler metnin doğru yere ulaştığını ölçer; uzun Türkçe metnin taşması, satır
   kaydırma ve sayfa görünümü bir insan tarafından bakılarak denetlenmedi. Bunun için `docs/MANUAL_TEST.md`.
-* **Gerçek bir yapay zekâ modeliyle çeviri kalitesi** CI'da ölçülmedi (sahte sağlayıcı kullanıldı). Gerçek sağlayıcıyla
-  çalışmak için API anahtarı gerekir.
+* **Gerçek bir yapay zekâ modeliyle (Gemini vb.) çeviri kalitesi** ölçülmedi: CI'da anahtar yok. Yalnızca anahtarsız
+  Google Çeviri canlı denendi (yukarıda).
 * **Gerçek görev tamamlama** (eşya teslim etme, ödül alma) CI'da oynanmadı; görev verisinin değişmediği ölçüldü.
 * **Fabric** modülü derlenmiyor ve sınanmadı.
 * **Büyük mod paketleri** (yüzlerce mod) ve binlerce metinle performans sınanmadı.
