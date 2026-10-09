@@ -1,0 +1,44 @@
+modLoader = "javafml"
+loaderVersion = "[43,)"
+license = "GNU Affero General Public License v3.0"
+issueTrackerURL = "https://github.com/LangYueMc/AutoTranslation/issues/new"
+
+[[mods]]
+modId = "autotranslation"
+version = "${version}"
+displayName = "AutoTranslation"
+authors = "墨涤千尘 (original AutoTranslation); OpenAI/Turkish pipeline, FTB Quests and Patchouli integration added in this fork"
+description = '''
+Automatically translates English mod content into your language (Turkish first) through an OpenAI compatible
+provider: FTB Quests quest text and Patchouli books are translated at display time, nothing in the quest or book
+data is changed. Licensed under the GNU Affero General Public License v3.0; original work by 墨涤千尘 (AutoTranslation).
+'''
+
+[[dependencies.autotranslation]]
+modId = "forge"
+mandatory = true
+versionRange = "[43,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.autotranslation]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.19.2,1.19.3)"
+ordering = "NONE"
+side = "BOTH"
+
+# Optional integrations: the game starts without them; when present they are translated.
+[[dependencies.autotranslation]]
+modId = "ftbquests"
+mandatory = false
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies.autotranslation]]
+modId = "patchouli"
+mandatory = false
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "CLIENT"

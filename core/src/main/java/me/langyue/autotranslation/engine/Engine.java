@@ -79,6 +79,7 @@ public final class Engine {
     private volatile GameLanguageIndex gameIndex = GameLanguageIndex.empty();
     private volatile boolean refreshRequested = false;
     private long lastRefreshMillis = 0L;
+    private String lastLanguage;
 
     /** Creates the engine and makes it the {@linkplain #get() current} one. */
     public static Engine start(Platform platform, EngineSettings settings) {
@@ -243,6 +244,12 @@ public final class Engine {
 
     /** Call once per client tick: refreshes open screens (at most every 400 ms) after translations arrived. */
     public void tick() {
+        String language = platform.languageCode();
+        if (language != null && !language.equals(lastLanguage)) {
+            boolean changed = lastLanguage != null;
+            lastLanguage = language;
+            if (changed) applyConfig(); // new target language: lookups are keyed by it, displays must be rebuilt
+        }
         if (!refreshRequested) return;
         long now = System.currentTimeMillis();
         if (now - lastRefreshMillis < 400) return;

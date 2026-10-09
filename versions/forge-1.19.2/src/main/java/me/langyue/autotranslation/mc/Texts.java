@@ -1,0 +1,16 @@
+package me.langyue.autotranslation.mc;
+
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.chat.TranslatableComponent;
+
+/** The few text component operations whose API differs between Minecraft versions. */
+public final class Texts {
+    private Texts() {
+    }
+
+    /** A plain text or a translatable component (no children, no nested arguments to preserve). */
+    public static boolean isSimple(Component component) {
+        return component instanceof TextComponent || component instanceof TranslatableComponent;
+    }
+}
