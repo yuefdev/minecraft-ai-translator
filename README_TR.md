@@ -4,7 +4,10 @@ Mod paketindeki İngilizce içeriği, bağlamı anlayarak doğal Türkçeye çev
 Özgün proje: [Moirstral/AutoTranslation](https://github.com/Moirstral/AutoTranslation) (AGPL-3.0, atıflar için bkz.
 [`NOTICE.md`](NOTICE.md)). Bu sürüm üstüne şunları ekler:
 
-* **OpenAI uyumlu sağlayıcı** (OpenAI, OpenRouter, LM Studio, Ollama `/v1` …); uç nokta, model ve API anahtarı ayarlanabilir.
+* **Ücretsiz çeviri, kurulumsuz:** anahtar girmezseniz anahtarsız Google Çeviri kullanılır (resmi olmayan uç nokta).
+  **Ücretsiz ve daha kaliteli:** Google Gemini'nin ücretsiz anahtarı (kart gerekmez). Ayrıca Groq, Mistral,
+  OpenRouter ücretsiz modelleri, bilgisayarda çalışan Ollama ya da herhangi bir OpenAI uyumlu (ücretli) hizmet.
+  Anahtarı yapıştırmanız yeter: hangi hizmet olduğu anahtardan anlaşılır.
 * **FTB Quests**: bölüm/görev başlıkları, alt başlıklar, uzun açıklamalar, hedef ve ödül başlıkları, bölüm alt başlığı ipuçları.
 * **Patchouli**: kitap/kategori/giriş başlıkları, sayfa metinleri, listeler, sayfa başlıkları – yerleşim hesaplanmadan önce.
 * **Her modun İngilizce metni, otomatik olarak** – modun adı bir listede olmasa da:
@@ -24,11 +27,15 @@ Gerekli: Minecraft **1.20.1**, Forge **47.x**, Java 17, [Architectury API](https
 
 1. `AutoTranslation-<sürüm>+mc1.20.1-forge.jar` dosyasını `mods/` klasörüne koyun.
 2. Oyunda dili **Türkçe (tr_tr)** yapın.
-3. API anahtarınızı girin – **dosyaya düz yazılmaz**:
+3. Hiçbir şey yapmasanız da çeviri çalışır (anahtarsız Google Çeviri). Daha iyi Türkçe için ücretsiz bir
+   **Gemini anahtarı** alın (<https://aistudio.google.com/apikey>, `AIza…` ile başlar) ve girin – **dosyaya düz yazılmaz**:
    * ortam değişkeni `AUTOTRANSLATION_API_KEY` (öncelikli), ya da
    * Mod menüsü → AutoTranslation → **Sağlayıcı** sekmesi → API anahtarı (yalnızca
      `oyun klasörü/AutoTranslation/secrets/api-key.txt` içine, sahibine özel izinle yazılır; klasör `.gitignore`'dadır).
-4. **Sağlayıcı** sekmesinde uç noktayı ve modeli seçip **Bağlantıyı sına**'ya basın.
+4. **Sağlayıcı** sekmesinde **Hizmet** "Otomatik" kalabilir (anahtara göre seçilir) ya da listeden bir hizmet seçin;
+   **Ücretsiz anahtar al** düğmesi anahtar sayfasını açar. **Bağlantıyı sına** ile deneyin.
+
+1.12.2 için adım adım anlatım: [`docs/KURULUM_1.12.2.md`](docs/KURULUM_1.12.2.md).
 
 Yerel model (Ollama) için: uç nokta `http://localhost:11434/v1`, model örn. `llama3.1`, anahtar gerekmez.
 
@@ -48,6 +55,9 @@ Dosyalar `oyun klasörü/AutoTranslation/` altındadır: `glossary.json`, `corre
 
 ## Maliyet ve performans
 
+Aynı anda istenen kısa metinler tek istekte birlikte gönderilir (ücretsiz katmanların dakikadaki istek sınırı için).
+Ücretsiz bir hizmetin günlük sınırı dolunca önce aynı hizmetin yedek modeline geçilir, o da dolarsa yeni çeviriler bir
+süre bekletilir; önbellekteki çeviriler görünmeye devam eder.
 Metinler yalnızca **ilk görüntülendiklerinde** istenir ve sonuç önbelleğe yazılır; tüm modpaketi başlangıçta
 çevrilmez (üst projenin toplu çevirisi **varsayılan olarak kapalıdır**, çünkü binlerce istek ve ücret doğurabilir).
 Dakikadaki istek sayısı, kuyruk büyüklüğü, zaman aşımı ve yeniden deneme sayısı sınırlıdır.
