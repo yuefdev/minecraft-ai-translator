@@ -159,7 +159,8 @@ public final class Engine {
                 .coalesceShortTexts(true)
                 .build();
         CoreLog.info("Translation engine ready (cache: " + cache.size() + " entries, provider configured: "
-                + provider.isConfigured() + ")");
+                + activeProvider().isConfigured() + ")");
+        logSelection();
     }
 
     // ----------------------------------------------------------------------------------------- accessors
@@ -203,6 +204,18 @@ public final class Engine {
     /** Which service, address and model are in use, after "auto" and the presets were worked out. */
     public me.langyue.autotranslation.core.provider.ProviderSelection selection() {
         return selection;
+    }
+
+    private String loggedSelection = "";
+
+    /** Which service is used (never the key), written once per change so that a player can check it in the log. */
+    private void logSelection() {
+        String text = "Translation service: " + selection.presetId() + " (" + selection.model() + ", up to "
+                + selection.requestsPerMinute() + " requests/min" + (apiKey.isEmpty() ? ", no key" : ", key set") + ")";
+        if (!text.equals(loggedSelection)) {
+            loggedSelection = text;
+            CoreLog.info(text);
+        }
     }
 
     private me.langyue.autotranslation.core.provider.ProviderSelection select() {
@@ -306,6 +319,7 @@ public final class Engine {
         CoreLog.setDebug(settings.debug);
         selection = select();
         openAi = buildOpenAiSettings();
+        logSelection();
         service.updateSettings(buildServiceSettings());
         service.setAnalyzer(buildAnalyzer());
         service.clearFailures();
