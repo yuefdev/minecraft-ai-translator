@@ -115,7 +115,7 @@ jobs:
             sudo unzip -q /tmp/gradle.zip -d /opt && echo "/opt/gradle-${{ matrix.gradle }}/bin" >> "$GITHUB_PATH"
           fi
           sudo apt-get update -qq
-          sudo apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 libopenal1 libxrandr2 libxinerama1 libxcursor1 libxi6 libxxf86vm1 > /dev/null
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 libopenal1 libxrandr2 libxinerama1 libxcursor1 libxi6 libxxf86vm1 x11-xserver-utils > /dev/null
       - name: Start the game and run the checks
         continue-on-error: true
         env:
@@ -125,6 +125,8 @@ jobs:
           MODULE: versions/${{ matrix.module }}
         run: |
           chmod +x gradlew
+          # LWJGL 2 (1.12.2) reads the display modes from the xrandr tool and wants a legacy GL context
+          if [ "${{ matrix.module }}" = "forge-1.12.2" ]; then unset MESA_GL_VERSION_OVERRIDE MESA_GLSL_VERSION_OVERRIDE; fi
           if [ -n "${{ matrix.gradle }}" ]; then GRADLE=gradle; else GRADLE=./gradlew; fi
           TASK="${{ matrix.task || 'runSmokeClient' }}"
           extra="-PsmokeRun=true"

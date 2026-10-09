@@ -223,3 +223,38 @@ jobs:
           javap -p -cp "$CP" dev.ftb.mods.ftblibrary.client.gui.widget.Panel 2>&1 | grep -E "refreshWidgets|class " | head -n 3
           echo "=== Minecraft screen class that wraps FTB guis"
           unzip -l ftb-library.jar | awk '{print $4}' | grep -iE "screen" | head -n 20
+
+  # Forge 1.16.5 under Architectury Loom crashed while baking models: BlockMath calls Transformation.func_227987_b_
+  # (an SRG name) on the mojmap-named game jar. Show what the dev jars really contain.
+  inspect-forge-1165:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        run: git clone --quiet --depth 1 --branch "$GITHUB_REF_NAME" "https://x-access-token:${{ github.token }}@github.com/$GITHUB_REPOSITORY.git" .
+      - name: Inspect the dev game jars
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"; export JAVA_HOME=$JAVA_HOME_17_X64; export PATH=$JAVA_HOME/bin:$PATH
+          chmod +x gradlew
+          ./gradlew -p versions/forge-1.16.5 compileJava --no-daemon --console=plain > b.log 2>&1 || { tail -n 30 b.log; exit 1; }
+          jars=$(find ~/.gradle versions/forge-1.16.5/.gradle -name "*.jar" 2>/dev/null | grep -E "minecraft|forge-1\.16\.5" | grep -vE "sources|launcher|userdev|installer" | sort -u)
+          echo "=== candidate jars"; echo "$jars" | sed 's|^.*/||' | head -n 20
+          for j in $jars; do
+            if unzip -l "$j" 2>/dev/null | grep -q "com/mojang/math/Transformation.class"; then
+              echo "=== $(basename $j): Transformation methods returning Transformation"
+              javap -p -cp "$j" com.mojang.math.Transformation | grep -E "Transformation [a-zA-Z_0-9]+\(" | head -n 12
+              echo "--- BlockMath invokes"
+              javap -c -p -cp "$j" net.minecraft.core.BlockMath | grep -E "invoke.*Transformation\." | sort | uniq -c | head -n 12
+            fi
+            if unzip -l "$j" 2>/dev/null | grep -q "net/minecraft/util/math/vector/TransformationMatrix.class"; then
+              echo "=== $(basename $j) (srg): TransformationMatrix methods"
+              javap -p -cp "$j" net.minecraft.util.math.vector.TransformationMatrix | grep -E "TransformationMatrix [a-zA-Z_0-9]+\(" | head -n 12
+            fi
+          done
+          echo "=== mapping entries for func_227987_b_ and its neighbours"
+          for m in $(find ~/.gradle versions/forge-1.16.5/.gradle -name "*.tiny" -o -name "*.tsrg" 2>/dev/null | head -n 20); do
+            c=$(grep -c "func_227987_b_" "$m" 2>/dev/null); [ "$c" != "0" ] && { echo "--- $(echo $m | sed 's|^.*/caches/||') ($c)"; grep -n -B2 -A2 "func_227987_b_" "$m" | head -n 12; }
+          done
+          echo "=== Transformation class mapping lines"
+          for m in $(find ~/.gradle versions/forge-1.16.5/.gradle -name "*.tiny" 2>/dev/null | head -n 20); do
+            grep -nE "^c\s.*com/mojang/math/Transformation\s|^CLASS.*com/mojang/math/Transformation$" "$m" | head -n 2 | sed "s|^|$(basename $m): |"
+          done
