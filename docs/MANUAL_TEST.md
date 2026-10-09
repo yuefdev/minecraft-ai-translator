@@ -46,3 +46,14 @@ bir kez uygulayıp sonucu `docs/VERIFICATION.md` içindeki "El ile doğrulama" t
 |---|---|---|
 | D1 | `logs/latest.log`, `debug.log`, `config/autotranslation.json5` içinde API anahtarınızı arayın | Hiçbirinde bulunmamalı |
 | D2 | Yanlış anahtarla "Bağlantıyı sına" | Hata görünür, anahtar mesajda yok; kuyruk sonsuza dek denemez |
+
+## E. Herhangi bir mod (özel entegrasyonu olmayan modlar)
+
+Türkçe dil dosyası olmayan, rastgele seçilmiş birkaç mod kurun (ör. bir teknoloji modu ve bir dekorasyon modu).
+
+| # | Adım | Beklenen |
+|---|---|---|
+| E1 | Modun eşyalarını envanterde/JEI'de görün | Eşya adları ve açıklama satırları birkaç saniye içinde Türkçe (ilk anda İngilizce görünür) |
+| E2 | Modun kendi ekranını (makine arayüzü, ayar ekranı) açın | Ekrandaki sabit İngilizce yazılar Türkçe; düğmeler çalışır |
+| E3 | Sohbete İngilizce bir şey yazın, bir tabelaya yazı yazın, bir dünyaya isim verin | **Çevrilmez** (oyuncunun yazdığı metinlere dokunulmaz) |
+| E4 | Ayarlar → Genel → "Tüm ekranlardaki sabit yazılı metinleri çevir" seçeneğini kapatın | Sabit yazılar yalnızca elle açtığınız ekranlarda çevrilir; dil dosyası metinleri yine çevrilir |

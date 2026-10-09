@@ -1,4 +1,4 @@
-# AutoTranslation – Türkçe çeviri hattı (Minecraft 1.20.1, Forge)
+# AutoTranslation – Türkçe çeviri hattı (ana sürüm: Minecraft 1.20.1, Forge)
 
 Mod paketindeki İngilizce içeriği, bağlamı anlayarak doğal Türkçeye çeviren **istemci taraflı** bir moddur.
 Özgün proje: [Moirstral/AutoTranslation](https://github.com/Moirstral/AutoTranslation) (AGPL-3.0, atıflar için bkz.
@@ -7,7 +7,10 @@ Mod paketindeki İngilizce içeriği, bağlamı anlayarak doğal Türkçeye çev
 * **OpenAI uyumlu sağlayıcı** (OpenAI, OpenRouter, LM Studio, Ollama `/v1` …); uç nokta, model ve API anahtarı ayarlanabilir.
 * **FTB Quests**: bölüm/görev başlıkları, alt başlıklar, uzun açıklamalar, hedef ve ödül başlıkları, bölüm alt başlığı ipuçları.
 * **Patchouli**: kitap/kategori/giriş başlıkları, sayfa metinleri, listeler, sayfa başlıkları – yerleşim hesaplanmadan önce.
-* Eşya açıklamaları, dil dosyası metinleri ve mod arayüzleri (üst projenin mevcut altyapısı üzerinden).
+* **Her modun İngilizce metni, otomatik olarak** – modun adı bir listede olmasa da:
+  * dil dosyasındaki metinler (Türkçe dosyası olmayan modların eşya/blok adları, açıklama satırları, arayüz yazıları),
+  * ekranlarda koda gömülü (sabit yazılmış) İngilizce yazılar – varsayılan olarak **tüm ekranlarda** açıktır.
+  Sohbet, tabela, kitap ve isim verme ekranları gibi **oyuncunun yazdığı metinler çevrilmez**.
 * Kalıcı, **çevrimdışı çalışan** önbellek; düzenlenebilir sözlük; yerel düzeltmeler; Türkçe ayarlar ekranı.
 
 Bu mod, oyun verisini **yeniden yazmaz**: çeviri yalnızca ekrana çizilirken yapılır. Görev kimlikleri, koşullar, ödüller,
@@ -55,7 +58,9 @@ Dakikadaki istek sayısı, kuyruk büyüklüğü, zaman aşımı ve yeniden dene
   dosya yoksa İngilizce kalır ve çevrilir.
 * Patchouli `$(t:…)` ipucu metinleri çevrilmez.
 * Sayıların sırası serbesttir (cümle yapısı değişebilir) ama `3/10`, `12:30` gibi çiftlerin sırası değişirse çeviri reddedilir.
-* BetterQuesting için **özel entegrasyon yoktur** (bkz. `docs/VERIFICATION.md`).
+* BetterQuesting yalnızca **1.12.2** modülünde desteklenir (mod daha yeni sürümlere çıkmadı).
+* Doku/resim içine çizilmiş yazılar ve sohbet mesajları çevrilmez.
+* Diğer Minecraft sürümleri (1.12.2 – 26.1.2) için bkz. [`docs/VERSIONS.md`](docs/VERSIONS.md).
 * Fabric modülü depoda durur ama bu sürümde derlenmez ve doğrulanmamıştır (`-PwithFabric=true` ile açılabilir).
 
 ## Derleme
