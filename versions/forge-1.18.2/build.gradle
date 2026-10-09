@@ -11,6 +11,7 @@ group = "me.langyue"
 repositories {
     maven { url "https://maven.minecraftforge.net/" }
     maven { url "https://maven.blamejared.com" }
+    maven { url "https://maven.architectury.dev/" }
     maven {
         url "https://maven.ftb.dev/releases"
         content {
@@ -69,6 +70,8 @@ dependencies {
 // -PsmokeMods puts the optional integrations on the runtime classpath of runSmokeClient.
 if (project.hasProperty("smokeMods")) {
     dependencies {
+        // FTB Quests / Library require Architectury API when they run
+        modLocalRuntime("dev.architectury:architectury-forge:${architectury_version}")
         modLocalRuntime("dev.ftb.mods:ftb-library-forge:${ftb_library_version}") { transitive = false }
         modLocalRuntime("dev.ftb.mods:ftb-teams-forge:${ftb_teams_version}") { transitive = false }
         modLocalRuntime("dev.ftb.mods:ftb-quests-forge:${ftb_quests_version}") { transitive = false }
