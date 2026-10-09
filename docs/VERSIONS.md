@@ -17,6 +17,11 @@ altında küçük bir modüldür ve yalnızca o sürümün oyun/mod API'sine ba�
 | `versions/forge-1.16.5` | 1.16.5 | Forge 36 | 8+ | FTB Quests 1605, Patchouli 1.16.4 | Mixin |
 | `versions/forge-1.12.2` | 1.12.2 | Forge 14.23.5 | 8 | BetterQuesting 3.5, FTB Quests 1.12, Patchouli 1.0 | ASM "coremod" (Mixin gerekmez) |
 | `versions/neoforge-1.21.1` | 1.21.1 | NeoForge 21.1 | 21 | FTB Quests 2101, Patchouli 1.21.1 | Mixin |
+| `versions/neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2 | 25 | FTB Quests 26.1.2 (Patchouli bu sürüme çıkmadı) | Mixin |
+
+Her sürümde, mod adı bilinmeden çalışan **genel çeviri** de vardır: Türkçe dosyası olmayan modların dil dosyası metinleri
+ve ekranlara koda gömülü İngilizce yazılar (sohbet, tabela, kitap, isim verme ekranları hariç). 1.12.2'de bu, oyunun
+`Locale`/`LanguageMap` ve `FontRenderer` sınıflarına ASM ile eklenen çağrılarla yapılır.
 
 ## Ayarlar (1.20.1 dışındaki sürümler)
 
