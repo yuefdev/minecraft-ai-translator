@@ -13,14 +13,23 @@ public final class CoreLog {
         void log(Level level, String message, Throwable error);
     }
 
-    private static final System.Logger FALLBACK = System.getLogger("AutoTranslation");
+    private static final java.util.logging.Logger FALLBACK = java.util.logging.Logger.getLogger("AutoTranslation");
     private static volatile Sink sink = (level, message, error) -> {
-        System.Logger.Level l = switch (level) {
-            case DEBUG -> System.Logger.Level.DEBUG;
-            case INFO -> System.Logger.Level.INFO;
-            case WARN -> System.Logger.Level.WARNING;
-            case ERROR -> System.Logger.Level.ERROR;
-        };
+        java.util.logging.Level l;
+        switch (level) {
+            case DEBUG:
+                l = java.util.logging.Level.FINE;
+                break;
+            case INFO:
+                l = java.util.logging.Level.INFO;
+                break;
+            case WARN:
+                l = java.util.logging.Level.WARNING;
+                break;
+            default:
+                l = java.util.logging.Level.SEVERE;
+                break;
+        }
         FALLBACK.log(l, message, error);
     };
     private static volatile boolean debug = false;

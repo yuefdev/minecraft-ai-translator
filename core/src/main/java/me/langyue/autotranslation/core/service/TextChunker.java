@@ -11,7 +11,40 @@ import java.util.List;
 public final class TextChunker {
 
     /** A piece of text plus the whitespace that followed it in the source (re-added after translation). */
-    public record Piece(String text, String trailingWhitespace) {
+    public static final class Piece {
+        private final String text;
+        private final String trailingWhitespace;
+
+        public Piece(String text, String trailingWhitespace) {
+            this.text = text;
+            this.trailingWhitespace = trailingWhitespace;
+        }
+
+        public String text() {
+            return text;
+        }
+
+        public String trailingWhitespace() {
+            return trailingWhitespace;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Piece other = (Piece) o;
+            return java.util.Objects.equals(text, other.text) && java.util.Objects.equals(trailingWhitespace, other.trailingWhitespace);
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(text, trailingWhitespace);
+        }
+
+        @Override
+        public String toString() {
+            return "Piece[" + "text=" + text + ", " + "trailingWhitespace=" + trailingWhitespace + "]";
+        }
     }
 
     private TextChunker() {

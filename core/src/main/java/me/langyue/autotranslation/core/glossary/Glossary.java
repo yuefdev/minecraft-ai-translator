@@ -1,5 +1,6 @@
 package me.langyue.autotranslation.core.glossary;
 
+import me.langyue.autotranslation.core.util.Compat;
 import me.langyue.autotranslation.core.util.Hashing;
 
 import java.util.ArrayList;
@@ -23,21 +24,87 @@ import java.util.regex.Pattern;
  */
 public final class Glossary {
 
-    public record Term(String source, String target) {
+    public static final class Term {
+        private final String source;
+        private final String target;
+
+        public Term(String source, String target) {
+            this.source = source;
+            this.target = target;
+        }
+
+        public String source() {
+            return source;
+        }
+
+        public String target() {
+            return target;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Term other = (Term) o;
+            return java.util.Objects.equals(source, other.source) && java.util.Objects.equals(target, other.target);
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(source, target);
+        }
+
+        @Override
+        public String toString() {
+            return "Term[" + "source=" + source + ", " + "target=" + target + "]";
+        }
     }
 
-    private record Compiled(Term term, Pattern pattern) {
+    private static final class Compiled {
+        private final Term term;
+        private final Pattern pattern;
+
+        public Compiled(Term term, Pattern pattern) {
+            this.term = term;
+            this.pattern = pattern;
+        }
+
+        public Term term() {
+            return term;
+        }
+
+        public Pattern pattern() {
+            return pattern;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Compiled other = (Compiled) o;
+            return java.util.Objects.equals(term, other.term) && java.util.Objects.equals(pattern, other.pattern);
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(term, pattern);
+        }
+
+        @Override
+        public String toString() {
+            return "Compiled[" + "term=" + term + ", " + "pattern=" + pattern + "]";
+        }
     }
 
     private final Object lock = new Object();
-    private volatile Map<String, String> terms = Map.of();
-    private volatile Map<String, String> hints = Map.of();
-    private volatile List<Compiled> compiled = List.of();
-    private volatile Map<String, Term> hintIndex = Map.of();
+    private volatile Map<String, String> terms = Compat.mapOf();
+    private volatile Map<String, String> hints = Compat.mapOf();
+    private volatile List<Compiled> compiled = Compat.listOf();
+    private volatile Map<String, Term> hintIndex = Compat.mapOf();
     private volatile String version = "0";
 
     public Glossary() {
-        rebuild(new LinkedHashMap<>(), Map.of());
+        rebuild(new LinkedHashMap<>(), Compat.mapOf());
     }
 
     public static Glossary of(Map<String, String> terms) {
@@ -59,11 +126,11 @@ public final class Glossary {
     }
 
     public void put(String source, String target) {
-        if (source == null || source.isBlank() || target == null || target.isBlank()) return;
+        if (source == null || Compat.isBlank(source) || target == null || Compat.isBlank(target)) return;
         synchronized (lock) {
             Map<String, String> copy = new LinkedHashMap<>(terms);
             copy.remove(findKey(copy, source));
-            copy.put(source.strip(), target.strip());
+            copy.put(Compat.strip(source), Compat.strip(target));
             rebuild(copy, hints);
         }
     }
@@ -98,7 +165,7 @@ public final class Glossary {
      */
     public Map<String, String> matching(String text, int limit) {
         Map<String, String> found = new LinkedHashMap<>();
-        if (text == null || text.isBlank() || limit <= 0) return found;
+        if (text == null || Compat.isBlank(text) || limit <= 0) return found;
         for (Compiled c : compiled) {
             if (found.size() >= limit) break;
             if (c.pattern().matcher(text).find()) {
@@ -123,7 +190,7 @@ public final class Glossary {
     private static final Pattern WORD = Pattern.compile("[\\p{L}\\p{N}][\\p{L}\\p{N}'’-]*");
 
     private static String normalizeKey(String key) {
-        return String.join(" ", key.toLowerCase(Locale.ROOT).strip().split("\\s+"));
+        return String.join(" ", Compat.strip(key.toLowerCase(Locale.ROOT)).split("\\s+"));
     }
 
     private void rebuild(Map<String, String> newTerms, Map<String, String> newHints) {
@@ -150,7 +217,7 @@ public final class Glossary {
         sorted.forEach((k, v) -> canonical.append(k.toLowerCase(Locale.ROOT)).append('\u0000').append(v).append('\n'));
         this.terms = Collections.unmodifiableMap(new LinkedHashMap<>(newTerms));
         this.hints = Collections.unmodifiableMap(new LinkedHashMap<>(newHints));
-        this.compiled = List.copyOf(list);
+        this.compiled = Compat.listCopyOf(list);
         this.version = Hashing.sha256(canonical.toString()).substring(0, 12);
     }
 
@@ -158,7 +225,7 @@ public final class Glossary {
         Map<String, String> out = new LinkedHashMap<>();
         if (input == null) return out;
         input.forEach((k, v) -> {
-            if (k != null && v != null && !k.isBlank() && !v.isBlank()) out.put(k.strip(), v.strip());
+            if (k != null && v != null && !Compat.isBlank(k) && !Compat.isBlank(v)) out.put(Compat.strip(k), Compat.strip(v));
         });
         return out;
     }
@@ -166,7 +233,7 @@ public final class Glossary {
     private static String findKey(Map<String, String> map, String key) {
         if (key == null) return null;
         for (String existing : map.keySet()) {
-            if (existing.equalsIgnoreCase(key.strip())) return existing;
+            if (existing.equalsIgnoreCase(Compat.strip(key))) return existing;
         }
         return null;
     }

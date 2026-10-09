@@ -1,5 +1,6 @@
 package me.langyue.autotranslation.core.glossary;
 
+import me.langyue.autotranslation.core.util.Compat;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -13,7 +14,7 @@ import java.util.Set;
  */
 public final class GameLanguageIndex {
 
-    private static final Set<String> NAME_PREFIXES = Set.of(
+    private static final Set<String> NAME_PREFIXES = Compat.setOf(
             "item.", "block.", "entity.", "effect.", "enchantment.", "biome.", "attribute.", "itemGroup.",
             "advancements.", "stat.", "gui.", "container."
     );
@@ -25,7 +26,7 @@ public final class GameLanguageIndex {
     }
 
     public static GameLanguageIndex empty() {
-        return new GameLanguageIndex(Map.of());
+        return new GameLanguageIndex(Compat.mapOf());
     }
 
     /**
@@ -39,7 +40,7 @@ public final class GameLanguageIndex {
             String key = e.getKey();
             String en = e.getValue();
             String tr = turkish.get(key);
-            if (tr == null || en == null || en.isBlank() || tr.isBlank()) continue;
+            if (tr == null || en == null || Compat.isBlank(en) || Compat.isBlank(tr)) continue;
             if (en.equals(tr)) continue;
             if (en.indexOf('%') >= 0 || en.indexOf('\n') >= 0 || en.length() > 48 || tr.length() > 64) continue;
             if (!isNameKey(key)) continue;
@@ -60,7 +61,7 @@ public final class GameLanguageIndex {
     /** Exact (case-sensitive, trimmed) English text -> official Turkish text, if unambiguous. */
     public String lookup(String english) {
         if (english == null) return null;
-        return byEnglish.get(english.strip());
+        return byEnglish.get(Compat.strip(english));
     }
 
     public Map<String, String> asMap() {

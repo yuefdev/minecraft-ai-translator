@@ -1,5 +1,6 @@
 package me.langyue.autotranslation.core.cache;
 
+import me.langyue.autotranslation.core.util.Compat;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -28,7 +29,40 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class TranslationCache {
     private static final Gson GSON = new Gson();
 
-    private record Entry(StoredTranslation value, long timestamp) {
+    private static final class Entry {
+        private final StoredTranslation value;
+        private final long timestamp;
+
+        public Entry(StoredTranslation value, long timestamp) {
+            this.value = value;
+            this.timestamp = timestamp;
+        }
+
+        public StoredTranslation value() {
+            return value;
+        }
+
+        public long timestamp() {
+            return timestamp;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Entry other = (Entry) o;
+            return java.util.Objects.equals(value, other.value) && timestamp == other.timestamp;
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(value, timestamp);
+        }
+
+        @Override
+        public String toString() {
+            return "Entry[" + "value=" + value + ", " + "timestamp=" + timestamp + "]";
+        }
     }
 
     private final Path file;
@@ -53,7 +87,7 @@ public final class TranslationCache {
             try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    if (line.isBlank()) continue;
+                    if (Compat.isBlank(line)) continue;
                     lines++;
                     try {
                         JsonObject o = GSON.fromJson(line, JsonObject.class);
@@ -111,7 +145,7 @@ public final class TranslationCache {
             try {
                 Path parent = file.toAbsolutePath().getParent();
                 if (parent != null) Files.createDirectories(parent);
-                Files.writeString(file, GSON.toJson(o) + "\n", StandardCharsets.UTF_8,
+                Compat.writeString(file, GSON.toJson(o) + "\n", StandardCharsets.UTF_8,
                         StandardOpenOption.CREATE, StandardOpenOption.APPEND);
                 if (appendedSinceCompaction.incrementAndGet() > maxEntries / 2L && entries.size() > maxEntries) {
                     compactLocked();
@@ -176,11 +210,11 @@ public final class TranslationCache {
         String text = v.get("t").getAsString();
         List<RestoreResult.Run> runs = new ArrayList<>();
         if (v.has("r")) {
-            for (var element : v.getAsJsonArray("r")) {
+            for (com.google.gson.JsonElement element : v.getAsJsonArray("r")) {
                 JsonObject r = element.getAsJsonObject();
                 runs.add(new RestoreResult.Run(r.get("i").getAsInt(), r.get("t").getAsString()));
             }
         }
-        return new StoredTranslation(text, List.copyOf(runs));
+        return new StoredTranslation(text, Compat.listCopyOf(runs));
     }
 }

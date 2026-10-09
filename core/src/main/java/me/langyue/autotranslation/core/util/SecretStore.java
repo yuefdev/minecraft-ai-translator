@@ -35,17 +35,17 @@ public final class SecretStore {
     /** True if the key comes from the environment (the settings screen then cannot change it). */
     public boolean isFromEnvironment() {
         String value = environment.apply(ENV_NAME);
-        return value != null && !value.isBlank();
+        return value != null && !Compat.isBlank(value);
     }
 
     public Secret load() {
         String fromEnv = environment.apply(ENV_NAME);
-        if (fromEnv != null && !fromEnv.isBlank()) {
+        if (fromEnv != null && !Compat.isBlank(fromEnv)) {
             return register(Secret.of(fromEnv));
         }
         try {
             if (Files.exists(file)) {
-                return register(Secret.of(Files.readString(file, StandardCharsets.UTF_8)));
+                return register(Secret.of(Compat.readString(file, StandardCharsets.UTF_8)));
             }
         } catch (IOException e) {
             CoreLog.warn("Could not read the stored API key: " + e.getClass().getSimpleName());
@@ -68,7 +68,7 @@ public final class SecretStore {
                 Files.createFile(file); // not a POSIX file system (for example Windows)
             }
         }
-        Files.writeString(file, secret.reveal(), StandardCharsets.UTF_8);
+        Compat.writeString(file, secret.reveal(), StandardCharsets.UTF_8);
         register(secret);
     }
 

@@ -1,5 +1,6 @@
 package me.langyue.autotranslation.core.lang;
 
+import me.langyue.autotranslation.core.util.Compat;
 import java.text.Normalizer;
 import java.util.Locale;
 import java.util.Set;
@@ -29,7 +30,7 @@ public final class TextAnalyzer {
         SKIP_EXCLUDED
     }
 
-    private static final Set<String> TURKISH_WORDS = Set.of(
+    private static final Set<String> TURKISH_WORDS = Compat.setOf(
             "ve", "bir", "bu", "icin", "ile", "ama", "gibi", "daha", "cok", "kadar", "sonra", "hic",
             "olarak", "olan", "yok", "degil", "veya", "bunu", "buna", "bunun", "size", "bana", "beni",
             "sana", "seni", "oyuncu", "gorev", "esya", "icinde", "uzerinde", "ayni", "yeni", "eski", "tum", "bazi",
@@ -38,7 +39,7 @@ public final class TextAnalyzer {
             "sunucu", "oyun", "dunya", "blok", "alet", "silah", "zirh", "yemek"
     );
 
-    private static final Set<String> ENGLISH_WORDS = Set.of(
+    private static final Set<String> ENGLISH_WORDS = Compat.setOf(
             "the", "and", "to", "of", "a", "in", "is", "it", "you", "that", "for", "on", "with", "as", "are", "be",
             "this", "your", "will", "can", "have", "from", "or", "by", "at", "an", "not", "all", "but", "if", "when",
             "use", "get", "make", "each", "more", "new", "has", "was", "were", "which", "their", "them", "they",
@@ -57,7 +58,7 @@ public final class TextAnalyzer {
 
     public TextAnalyzer(String extraTargetFeatureRegex, Set<String> excludedWords) {
         Pattern p = null;
-        if (extraTargetFeatureRegex != null && !extraTargetFeatureRegex.isBlank()) {
+        if (extraTargetFeatureRegex != null && !Compat.isBlank(extraTargetFeatureRegex)) {
             try {
                 p = Pattern.compile(extraTargetFeatureRegex);
             } catch (RuntimeException ignored) {
@@ -65,25 +66,25 @@ public final class TextAnalyzer {
             }
         }
         this.extraTargetFeature = p;
-        this.excludedWords = excludedWords == null ? Set.of() : Set.copyOf(excludedWords);
+        this.excludedWords = excludedWords == null ? Compat.setOf() : Compat.setCopyOf(excludedWords);
     }
 
     public TextAnalyzer() {
-        this(null, Set.of());
+        this(null, Compat.setOf());
     }
 
     /**
      * @param visibleText text with formatting codes / placeholders already removed
      */
     public Decision analyze(String visibleText, LanguageProfile target) {
-        if (visibleText == null || visibleText.isBlank()) return Decision.SKIP_BLANK;
-        String text = visibleText.strip();
+        if (visibleText == null || Compat.isBlank(visibleText)) return Decision.SKIP_BLANK;
+        String text = Compat.strip(visibleText);
         if (IDENTIFIER.matcher(text).matches()) return Decision.SKIP_IDENTIFIER;
 
         int words = 0;
         int englishScore = 0;
         int turkishScore = 0;
-        var matcher = WORD.matcher(text);
+        java.util.regex.Matcher matcher = WORD.matcher(text);
         int excluded = 0;
         while (matcher.find()) {
             String word = matcher.group();

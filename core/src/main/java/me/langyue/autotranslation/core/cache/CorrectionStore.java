@@ -1,5 +1,6 @@
 package me.langyue.autotranslation.core.cache;
 
+import me.langyue.autotranslation.core.util.Compat;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -26,7 +27,46 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class CorrectionStore {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
-    public record Correction(String source, String translation, String scope) {
+    public static final class Correction {
+        private final String source;
+        private final String translation;
+        private final String scope;
+
+        public Correction(String source, String translation, String scope) {
+            this.source = source;
+            this.translation = translation;
+            this.scope = scope;
+        }
+
+        public String source() {
+            return source;
+        }
+
+        public String translation() {
+            return translation;
+        }
+
+        public String scope() {
+            return scope;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Correction other = (Correction) o;
+            return java.util.Objects.equals(source, other.source) && java.util.Objects.equals(translation, other.translation) && java.util.Objects.equals(scope, other.scope);
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(source, translation, scope);
+        }
+
+        @Override
+        public String toString() {
+            return "Correction[" + "source=" + source + ", " + "translation=" + translation + ", " + "scope=" + scope + "]";
+        }
     }
 
     private final Path file;
@@ -41,7 +81,7 @@ public final class CorrectionStore {
         byKey.clear();
         if (!Files.exists(file)) return;
         try {
-            JsonObject root = GSON.fromJson(Files.readString(file, StandardCharsets.UTF_8), JsonObject.class);
+            JsonObject root = GSON.fromJson(Compat.readString(file, StandardCharsets.UTF_8), JsonObject.class);
             if (root == null || !root.has("corrections")) return;
             for (JsonElement element : root.getAsJsonArray("corrections")) {
                 JsonObject o = element.getAsJsonObject();

@@ -10,8 +10,9 @@ repositories {
 }
 
 dependencies {
-    // Minecraft 1.20.1 ships Gson 2.10 at runtime, so it is not bundled into the mod jar.
-    compileOnly "com.google.code.gson:gson:2.10.1"
+    // The game provides Gson at runtime (so it is not bundled). 2.2.4 is the version Minecraft 1.12.2 ships; compiling
+    // against it guarantees that the engine only uses API that exists in every supported Minecraft version.
+    compileOnly "com.google.code.gson:gson:2.2.4"
 
     testImplementation "com.google.code.gson:gson:2.10.1"
     testImplementation platform("org.junit:junit-bom:5.10.2")
@@ -19,8 +20,12 @@ dependencies {
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
+// The engine is written for Java 8 (Minecraft 1.12.2 runs on Java 8) and works unchanged on every newer version.
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
+    options.release = 8
+}
+tasks.named("compileTestJava") {
     options.release = 17
 }
 

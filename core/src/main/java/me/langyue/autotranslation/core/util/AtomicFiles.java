@@ -16,7 +16,7 @@ public final class AtomicFiles {
         Path parent = target.toAbsolutePath().getParent();
         if (parent != null) Files.createDirectories(parent);
         Path temp = target.resolveSibling(target.getFileName() + ".tmp");
-        Files.writeString(temp, content, StandardCharsets.UTF_8);
+        Compat.writeString(temp, content, StandardCharsets.UTF_8);
         try {
             Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (AtomicMoveNotSupportedException e) {

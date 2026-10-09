@@ -41,7 +41,8 @@ public final class Secret {
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof Secret s && Objects.equals(value, s.value);
+        if (!(o instanceof Secret)) return false;
+        return Objects.equals(value, ((Secret) o).value);
     }
 
     @Override

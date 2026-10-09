@@ -1,5 +1,6 @@
 package me.langyue.autotranslation.core.glossary;
 
+import me.langyue.autotranslation.core.util.Compat;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -38,7 +39,7 @@ public final class GlossaryStore {
     public Map<String, String> load() {
         if (Files.exists(file)) {
             try {
-                return parse(Files.readString(file, StandardCharsets.UTF_8));
+                return parse(Compat.readString(file, StandardCharsets.UTF_8));
             } catch (IOException | RuntimeException e) {
                 CoreLog.warn("Could not read glossary " + file + ", using the starter list", e);
             }

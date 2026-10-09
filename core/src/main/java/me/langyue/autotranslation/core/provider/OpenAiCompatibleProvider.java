@@ -1,5 +1,6 @@
 package me.langyue.autotranslation.core.provider;
 
+import me.langyue.autotranslation.core.util.Compat;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -35,7 +36,7 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
     private static final int MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 
     /** Request parameters that models/servers have refused so far; they are left out from then on. */
-    private static final List<String> NEGOTIABLE_PARAMETERS = List.of("response_format", "temperature", "max_tokens", "max_completion_tokens");
+    private static final List<String> NEGOTIABLE_PARAMETERS = Compat.listOf("response_format", "temperature", "max_tokens", "max_completion_tokens");
 
     private final Supplier<OpenAiSettings> settings;
     private final java.util.Set<String> unsupported = java.util.concurrent.ConcurrentHashMap.newKeySet();
@@ -189,7 +190,7 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
 
     static List<String> parseResponse(String responseBody, int expected) throws ProviderException {
         try {
-            JsonObject root = JsonParser.parseString(responseBody).getAsJsonObject();
+            JsonObject root = Compat.parseJson(responseBody).getAsJsonObject();
             String content = root.getAsJsonArray("choices").get(0).getAsJsonObject()
                     .getAsJsonObject("message").get("content").getAsString();
             return parseTranslations(content, expected);
@@ -201,12 +202,12 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
     }
 
     static List<String> parseTranslations(String content, int expected) throws ProviderException {
-        String text = content == null ? "" : content.strip();
+        String text = content == null ? "" : Compat.strip(content);
         Matcher fence = FENCE.matcher(text);
         if (fence.matches()) text = fence.group(1);
         JsonElement parsed;
         try {
-            parsed = JsonParser.parseString(extractJson(text));
+            parsed = Compat.parseJson(extractJson(text));
         } catch (RuntimeException e) {
             throw new ProviderException(ProviderException.Kind.BAD_RESPONSE, "The answer was not valid JSON");
         }
@@ -247,15 +248,15 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
 
     private static String readBody(InputStream in) throws IOException {
         if (in == null) return "";
-        try (in) {
+        try (InputStream stream = in) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] buffer = new byte[8192];
             int n;
-            while ((n = in.read(buffer)) > 0) {
+            while ((n = stream.read(buffer)) > 0) {
                 if (out.size() + n > MAX_RESPONSE_BYTES) throw new IOException("Response too large");
                 out.write(buffer, 0, n);
             }
-            return out.toString(StandardCharsets.UTF_8);
+            return new String(out.toByteArray(), StandardCharsets.UTF_8);
         }
     }
 

@@ -1,5 +1,6 @@
 package me.langyue.autotranslation.core.service;
 
+import me.langyue.autotranslation.core.util.Compat;
 import me.langyue.autotranslation.core.cache.CacheKey;
 import me.langyue.autotranslation.core.cache.CorrectionStore;
 import me.langyue.autotranslation.core.cache.StoredTranslation;
@@ -57,21 +58,107 @@ import java.util.function.Supplier;
  */
 public final class TranslationService implements AutoCloseable {
 
-    public record Settings(
-            boolean enabled,
-            LanguageProfile target,
-            int queueCapacity,
-            int requestsPerMinute,
-            int callTimeoutMillis,
-            int maxRetries,
-            long retryBaseDelayMillis,
-            int maxBatchChars,
-            int maxSegmentsPerBatch,
-            long failureCooldownMillis,
-            int breakerThreshold,
-            long breakerPauseMillis,
-            int glossaryTermLimit
-    ) {
+    public static final class Settings {
+        private final boolean enabled;
+        private final LanguageProfile target;
+        private final int queueCapacity;
+        private final int requestsPerMinute;
+        private final int callTimeoutMillis;
+        private final int maxRetries;
+        private final long retryBaseDelayMillis;
+        private final int maxBatchChars;
+        private final int maxSegmentsPerBatch;
+        private final long failureCooldownMillis;
+        private final int breakerThreshold;
+        private final long breakerPauseMillis;
+        private final int glossaryTermLimit;
+
+        public Settings(boolean enabled, LanguageProfile target, int queueCapacity, int requestsPerMinute, int callTimeoutMillis, int maxRetries, long retryBaseDelayMillis, int maxBatchChars, int maxSegmentsPerBatch, long failureCooldownMillis, int breakerThreshold, long breakerPauseMillis, int glossaryTermLimit) {
+            this.enabled = enabled;
+            this.target = target;
+            this.queueCapacity = queueCapacity;
+            this.requestsPerMinute = requestsPerMinute;
+            this.callTimeoutMillis = callTimeoutMillis;
+            this.maxRetries = maxRetries;
+            this.retryBaseDelayMillis = retryBaseDelayMillis;
+            this.maxBatchChars = maxBatchChars;
+            this.maxSegmentsPerBatch = maxSegmentsPerBatch;
+            this.failureCooldownMillis = failureCooldownMillis;
+            this.breakerThreshold = breakerThreshold;
+            this.breakerPauseMillis = breakerPauseMillis;
+            this.glossaryTermLimit = glossaryTermLimit;
+        }
+
+        public boolean enabled() {
+            return enabled;
+        }
+
+        public LanguageProfile target() {
+            return target;
+        }
+
+        public int queueCapacity() {
+            return queueCapacity;
+        }
+
+        public int requestsPerMinute() {
+            return requestsPerMinute;
+        }
+
+        public int callTimeoutMillis() {
+            return callTimeoutMillis;
+        }
+
+        public int maxRetries() {
+            return maxRetries;
+        }
+
+        public long retryBaseDelayMillis() {
+            return retryBaseDelayMillis;
+        }
+
+        public int maxBatchChars() {
+            return maxBatchChars;
+        }
+
+        public int maxSegmentsPerBatch() {
+            return maxSegmentsPerBatch;
+        }
+
+        public long failureCooldownMillis() {
+            return failureCooldownMillis;
+        }
+
+        public int breakerThreshold() {
+            return breakerThreshold;
+        }
+
+        public long breakerPauseMillis() {
+            return breakerPauseMillis;
+        }
+
+        public int glossaryTermLimit() {
+            return glossaryTermLimit;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Settings other = (Settings) o;
+            return enabled == other.enabled && java.util.Objects.equals(target, other.target) && queueCapacity == other.queueCapacity && requestsPerMinute == other.requestsPerMinute && callTimeoutMillis == other.callTimeoutMillis && maxRetries == other.maxRetries && retryBaseDelayMillis == other.retryBaseDelayMillis && maxBatchChars == other.maxBatchChars && maxSegmentsPerBatch == other.maxSegmentsPerBatch && failureCooldownMillis == other.failureCooldownMillis && breakerThreshold == other.breakerThreshold && breakerPauseMillis == other.breakerPauseMillis && glossaryTermLimit == other.glossaryTermLimit;
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(enabled, target, queueCapacity, requestsPerMinute, callTimeoutMillis, maxRetries, retryBaseDelayMillis, maxBatchChars, maxSegmentsPerBatch, failureCooldownMillis, breakerThreshold, breakerPauseMillis, glossaryTermLimit);
+        }
+
+        @Override
+        public String toString() {
+            return "Settings[" + "enabled=" + enabled + ", " + "target=" + target + ", " + "queueCapacity=" + queueCapacity + ", " + "requestsPerMinute=" + requestsPerMinute + ", " + "callTimeoutMillis=" + callTimeoutMillis + ", " + "maxRetries=" + maxRetries + ", " + "retryBaseDelayMillis=" + retryBaseDelayMillis + ", " + "maxBatchChars=" + maxBatchChars + ", " + "maxSegmentsPerBatch=" + maxSegmentsPerBatch + ", " + "failureCooldownMillis=" + failureCooldownMillis + ", " + "breakerThreshold=" + breakerThreshold + ", " + "breakerPauseMillis=" + breakerPauseMillis + ", " + "glossaryTermLimit=" + glossaryTermLimit + "]";
+        }
+
         public static Settings defaults(LanguageProfile target) {
             return new Settings(true, target, 512, 60, 60_000, 2, 1_500, 3_000, 24, 10 * 60_000L, 5, 60_000L, 30);
         }
@@ -174,7 +261,46 @@ public final class TranslationService implements AutoCloseable {
 
     // ----------------------------------------------------------------------------------------------- state
 
-    private record Prepared(MaskedText masked, boolean translatable, String sourceKey) {
+    private static final class Prepared {
+        private final MaskedText masked;
+        private final boolean translatable;
+        private final String sourceKey;
+
+        public Prepared(MaskedText masked, boolean translatable, String sourceKey) {
+            this.masked = masked;
+            this.translatable = translatable;
+            this.sourceKey = sourceKey;
+        }
+
+        public MaskedText masked() {
+            return masked;
+        }
+
+        public boolean translatable() {
+            return translatable;
+        }
+
+        public String sourceKey() {
+            return sourceKey;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Prepared other = (Prepared) o;
+            return java.util.Objects.equals(masked, other.masked) && translatable == other.translatable && java.util.Objects.equals(sourceKey, other.sourceKey);
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(masked, translatable, sourceKey);
+        }
+
+        @Override
+        public String toString() {
+            return "Prepared[" + "masked=" + masked + ", " + "translatable=" + translatable + ", " + "sourceKey=" + sourceKey + "]";
+        }
     }
 
     private static final class Unit {
@@ -316,7 +442,7 @@ public final class TranslationService implements AutoCloseable {
 
     /** Cheap, memoised check used on hot paths: could this text be translated at all? */
     public boolean needsTranslation(String text, MaskProfile profile) {
-        if (!settings.enabled() || text == null || text.isBlank()) return false;
+        if (!settings.enabled() || text == null || Compat.isBlank(text)) return false;
         return prepare(Segment.plain(text), profile, settings.target()).translatable();
     }
 
@@ -447,7 +573,7 @@ public final class TranslationService implements AutoCloseable {
         }
 
         if (unresolved.isEmpty()) {
-            Result ready = new Result(State.READY, List.of(results), degraded, detail);
+            Result ready = new Result(State.READY, Compat.listOf(results), degraded, detail);
             if (!degraded) remember(memoKeyText, ready);
             return ready;
         }
@@ -725,7 +851,7 @@ public final class TranslationService implements AutoCloseable {
                     "No answer from the translation service within " + timeoutMillis / 1000 + "s");
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
-            if (cause instanceof ProviderException pe) throw pe;
+            if (cause instanceof ProviderException) throw (ProviderException) cause;
             throw new ProviderException(ProviderException.Kind.BAD_RESPONSE, "Provider failure: " + Redactor.redact(cause));
         } catch (InterruptedException e) {
             future.cancel(true);
@@ -758,7 +884,7 @@ public final class TranslationService implements AutoCloseable {
         for (int index : job.unresolved) {
             if (job.results[index] == null || job.results[index].origin() == Origin.ORIGINAL) degraded = true;
         }
-        Result result = new Result(State.READY, List.copyOf(list), degraded, degraded ? job.failureDetail : "");
+        Result result = new Result(State.READY, Compat.listCopyOf(list), degraded, degraded ? job.failureDetail : "");
         List<Consumer<Result>> toNotify = new ArrayList<>();
         inflight.computeIfPresent(job.key, (k, v) -> {
             if (v == job) {

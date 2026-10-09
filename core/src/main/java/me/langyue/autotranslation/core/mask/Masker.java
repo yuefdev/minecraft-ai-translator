@@ -1,5 +1,6 @@
 package me.langyue.autotranslation.core.mask;
 
+import me.langyue.autotranslation.core.util.Compat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,7 +30,7 @@ public final class Masker {
     /** "3/10" or "12:30": the order of such pairs carries meaning (progress, ratios, times) and must not change. */
     private static final Pattern COMPOUND_NUMBER = Pattern.compile("\\d+\\s*[/:]\\s*\\d+");
 
-    private static final List<String> PREAMBLES = List.of(
+    private static final List<String> PREAMBLES = Compat.listOf(
             "here is the translation", "here's the translation", "sure,", "sure!", "certainly", "of course",
             "translation:", "translated text:", "i'm sorry", "i am sorry", "as an ai", "elbette", "tabii",
             "çeviri:", "ceviri:", "işte çeviri", "iste ceviri", "işte türkçe", "üzgünüm"
@@ -77,7 +78,7 @@ public final class Masker {
         if (ANY_TOKEN_LIKE.matcher(source).find()) return MaskedText.unsafe(source, profile);
         List<String> placeholders = new ArrayList<>();
         String masked = maskInto(source, profile, placeholders);
-        return new MaskedText(source, masked, List.copyOf(placeholders), 0, false, profile);
+        return new MaskedText(source, masked, Compat.listCopyOf(placeholders), 0, false, profile);
     }
 
     /**
@@ -101,7 +102,7 @@ public final class Masker {
                     .append(maskInto(run, profile, placeholders))
                     .append("[[/R").append(i).append("]]");
         }
-        return new MaskedText(original.toString(), masked.toString(), List.copyOf(placeholders), runs.size(), false, profile);
+        return new MaskedText(original.toString(), masked.toString(), Compat.listCopyOf(placeholders), runs.size(), false, profile);
     }
 
     private String maskInto(String source, MaskProfile profile, List<String> placeholders) {
@@ -144,7 +145,7 @@ public final class Masker {
         String tail = maskedPiece.substring(last);
         masked.append(tail);
         original.append(tail);
-        return new MaskedText(original.toString(), masked.toString(), List.copyOf(local), 0, false, whole.profile());
+        return new MaskedText(original.toString(), masked.toString(), Compat.listCopyOf(local), 0, false, whole.profile());
     }
 
     /** The text a reader would see: protected elements and run tags removed. Used for language analysis. */
@@ -170,7 +171,7 @@ public final class Masker {
      */
     public RestoreResult restore(MaskedText source, String translated, boolean checkCommentary) {
         if (source.unsafe()) return RestoreResult.failure("source contains token-like text");
-        if (translated == null || translated.isBlank()) return RestoreResult.failure("empty translation");
+        if (translated == null || Compat.isBlank(translated)) return RestoreResult.failure("empty translation");
 
         String normalized = normalizeTokens(translated);
 
@@ -194,12 +195,12 @@ public final class Masker {
         if (count(source.masked(), '\n') != count(normalized, '\n')) {
             return RestoreResult.failure("line structure changed");
         }
-        if (visibleSource.strip().length() >= 12) {
-            double ratio = (double) visibleTarget.strip().length() / Math.max(1, visibleSource.strip().length());
+        if (Compat.strip(visibleSource).length() >= 12) {
+            double ratio = (double) Compat.strip(visibleTarget).length() / Math.max(1, Compat.strip(visibleSource).length());
             if (ratio < 0.2 || ratio > 5.0) return RestoreResult.failure("implausible length");
         }
-        String lowerTarget = visibleTarget.strip().toLowerCase(Locale.ROOT);
-        String lowerSource = visibleSource.strip().toLowerCase(Locale.ROOT);
+        String lowerTarget = Compat.strip(visibleTarget).toLowerCase(Locale.ROOT);
+        String lowerSource = Compat.strip(visibleSource).toLowerCase(Locale.ROOT);
         for (String preamble : PREAMBLES) {
             if (checkCommentary && lowerTarget.startsWith(preamble) && !lowerSource.startsWith(preamble)) {
                 return RestoreResult.failure("answer starts with commentary");
@@ -207,7 +208,7 @@ public final class Masker {
         }
 
         if (!source.isRunMode()) {
-            String restored = substitute(normalized.strip(), source.placeholders());
+            String restored = substitute(Compat.strip(normalized), source.placeholders());
             return RestoreResult.success(copyEdgeWhitespace(source.original(), restored));
         }
         return restoreRuns(source, normalized);
@@ -251,7 +252,7 @@ public final class Masker {
         for (int i = 0; i < source.runCount(); i++) {
             if (!opened[i] || !closed[i]) return RestoreResult.failure("run tag missing");
         }
-        if (!runs.isEmpty() && !leading.isEmpty()) {
+        if (!runs.isEmpty() && leading.length() > 0) {
             RestoreResult.Run first = runs.get(0);
             runs.set(0, new RestoreResult.Run(first.styleIndex(), leading + first.text()));
         }
@@ -287,8 +288,15 @@ public final class Masker {
 
     /** Providers sometimes add spaces inside tokens or change their case; accept those spellings. */
     private static String normalizeTokens(String text) {
-        String t = PLACEHOLDER_TOKEN.matcher(text).replaceAll(r -> "[[P" + r.group(1) + "]]");
-        return RUN_TAG.matcher(t).replaceAll(r -> "[[" + r.group(1) + "R" + r.group(2) + "]]");
+        Matcher p = PLACEHOLDER_TOKEN.matcher(text);
+        StringBuffer canonical = new StringBuffer();
+        while (p.find()) p.appendReplacement(canonical, Matcher.quoteReplacement("[[P" + p.group(1) + "]]"));
+        p.appendTail(canonical);
+        Matcher r = RUN_TAG.matcher(canonical);
+        StringBuffer result = new StringBuffer();
+        while (r.find()) r.appendReplacement(result, Matcher.quoteReplacement("[[" + r.group(1) + "R" + r.group(2) + "]]"));
+        r.appendTail(result);
+        return result.toString();
     }
 
     private static String substitute(String text, List<String> placeholders) {

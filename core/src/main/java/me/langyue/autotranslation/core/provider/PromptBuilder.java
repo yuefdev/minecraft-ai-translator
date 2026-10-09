@@ -56,7 +56,7 @@ public final class PromptBuilder {
         }
         o.add("glossary", glossary);
         JsonArray segments = new JsonArray();
-        request.segments().forEach(segments::add);
+        for (String segment : request.segments()) segments.add(new com.google.gson.JsonPrimitive(segment));
         o.add("segments", segments);
         return o.toString();
     }
