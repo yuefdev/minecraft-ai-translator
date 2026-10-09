@@ -88,3 +88,29 @@ jobs:
                   m=json.load(urllib.request.urlopen(v["url"]))
                   print(v["id"], "java", m.get("javaVersion"), "assets", m.get("assets"), "type", v["type"])
           PY
+      - name: Verify exact coordinates
+        run: |
+          check() { code=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time 30 "$1"); echo "$code  $1"; }
+          A=https://maven.architectury.dev/dev/architectury
+          F=https://maven.ftb.dev/releases/dev/ftb/mods
+          B=https://maven.blamejared.com/vazkii/patchouli/Patchouli
+          for v in 1.32.68 1.32.66 1.31.51; do check $A/architectury-forge/$v/architectury-forge-$v.jar; done
+          for v in 4.12.94 3.9.66; do check $A/architectury-forge/$v/architectury-forge-$v.jar; done
+          check $A/architectury-forge/6.6.92/architectury-forge-6.6.92.jar
+          check $A/architectury-neoforge/13.0.8/architectury-neoforge-13.0.8.jar
+          check $F/ftb-quests-forge/1605.3.7-build.199/ftb-quests-forge-1605.3.7-build.199.jar
+          check $F/ftb-library-forge/1605.3.5-build.724/ftb-library-forge-1605.3.5-build.724.jar
+          check $F/ftb-teams-forge/1605.3.0-build.157/ftb-teams-forge-1605.3.0-build.157.jar
+          check $F/ftb-quests-forge/1802.3.16-build.479/ftb-quests-forge-1802.3.16-build.479.jar
+          check $F/ftb-library-forge/1802.3.12-build.726/ftb-library-forge-1802.3.12-build.726.jar
+          check $F/ftb-teams-forge/1802.2.11-build.152/ftb-teams-forge-1802.2.11-build.152.jar
+          check $F/ftb-quests-forge/1902.5.10-build.497/ftb-quests-forge-1902.5.10-build.497.jar
+          check $F/ftb-library-forge/1902.4.2-build.701/ftb-library-forge-1902.4.2-build.701.jar
+          check $F/ftb-teams-forge/1902.2.14-build.165/ftb-teams-forge-1902.2.14-build.165.jar
+          check $F/ftb-quests-neoforge/2101.1.36/ftb-quests-neoforge-2101.1.36.jar
+          check $F/ftb-library-neoforge/2101.1.36/ftb-library-neoforge-2101.1.36.jar
+          check $F/ftb-teams-neoforge/2101.1.11/ftb-teams-neoforge-2101.1.11.jar
+          check $B/1.16.4-53.3/Patchouli-1.16.4-53.3.jar
+          check $B/1.18.2-71.1/Patchouli-1.18.2-71.1.jar
+          check $B/1.19.2-77/Patchouli-1.19.2-77.jar
+          check $B/1.21.1-93-NEOFORGE/Patchouli-1.21.1-93-NEOFORGE.jar
