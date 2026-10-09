@@ -1,0 +1,57 @@
+# Doğrulama durumu – neyin gerçekten sınandığı
+
+Bu dosya, hangi desteğin **gerçekten çalıştırılarak sınandığını**, hangisinin yalnızca derlendiğini ve hangisinin hiç
+sınanmadığını ayırır. Sınanmayan hiçbir şey "doğrulanmış" olarak listelenmez.
+
+## Nasıl sınandı
+
+1. **Birim testleri (`core/`)** – Minecraft'tan bağımsız çeviri motoru: maskeleme (`%s`, `%d`, `{name}`, `§` renk
+   kodları, URL'ler, Patchouli `$(...)` komutları, FTB `{@pagebreak}`), metin analizi, sözlük, önbellek, düzeltmeler,
+   sağlayıcı yanıt doğrulama, hız sınırı/yeniden deneme, API anahtarının dosyalara/loglara sızmaması. Ağ yerine yerel
+   bir **sahte OpenAI uyumlu sunucu** kullanılır. 118 test yöntemi; CI'da `./gradlew -p core test`.
+2. **Derleme** – her sürüm modülü kendi Gradle/Java sürümüyle CI'da derlenir (1.20.1 için `./gradlew :forge:build`,
+   Windows karşılığı `gradlew.bat :forge:build`).
+3. **Oyun başlatma testi (duman testi)** – CI'da **gerçek Minecraft istemcisi** başlatılır (Xvfb sanal ekran + Mesa
+   yazılımsal OpenGL). Mod içindeki başlangıç denetimi oyunun içinden yerel sahte sağlayıcıya bağlanır (sahte sağlayıcı
+   her metne `TR| ` ön eki koyar) ve sonuçları `build/smoke/result.json` dosyasına yazar. Her sürüm iki kez açılır:
+   * **yalnız bu mod** – isteğe bağlı modlar yokken oyun açılıyor mu, genel çeviri yolu çalışıyor mu;
+   * **FTB Quests + Patchouli ile** (1.12.2'de ayrıca **BetterQuesting**) – özel kancalar gerçek mod sınıflarına
+     uygulanıyor mu, metin "mod → çeviri hattı → sağlayıcı → ekran" yolunu baştan sona geçiyor mu, veri (ham metin,
+     kimlik, renk/biçim) değişmeden kalıyor mu.
+
+   **"Her modu çevirme" denetimleri** hiçbir mod adını bilmez: Türkçe dosyası olmayan bir dil anahtarının değeri
+   (`I18n.get`) ve listede olmayan bir ekrandaki koda gömülü İngilizce yazı kendiliğinden çevrilmelidir.
+
+İş akışları: `.github/workflows/forge-build.yml` (1.20.1 derleme + birim testleri), `smoke.yml` (1.20.1 oyun
+başlatma), `versions.yml` (diğer sürümler: derleme + oyun başlatma).
+
+## Sonuçlar
+
+Durum işaretleri: ✅ CI'da geçti · ❌ CI'da başarısız · ⏳ sonuç bekleniyor · — uygulanamaz
+
+| Sürüm | Derleme | Oyun açılışı (yalnız bu mod) | Her mod: dil dosyası | Her mod: ekrandaki sabit yazı | FTB Quests | Patchouli | BetterQuesting |
+|---|---|---|---|---|---|---|---|
+| 1.20.1 Forge (ana sürüm) | ✅ | ✅ | ✅ | ✅ | ⏳ | ✅ | — |
+| 1.19.2 Forge | ✅ | ✅ | ✅ | ✅ | ⏳ | ⏳ | — |
+| 1.18.2 Forge | ✅ | ✅ | ✅ | ✅ | ⏳ | ⏳ | — |
+| 1.16.5 Forge | ✅ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 1.12.2 Forge | ✅ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
+| 1.21.1 NeoForge | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| 26.1.2 NeoForge | ✅ | ⏳ | ⏳ | ⏳ | ⏳ | — (Patchouli bu sürüme çıkmadı) | — |
+
+## Doğrulanmayanlar (açıkça)
+
+* **Gözle görsel kontrol yapılmadı.** Testler metnin doğru yere ulaştığını ölçer; uzun Türkçe metnin taşması, satır
+  kaydırma ve sayfa görünümü bir insan tarafından bakılarak denetlenmedi. Bunun için `docs/MANUAL_TEST.md`.
+* **Gerçek bir yapay zekâ modeliyle çeviri kalitesi** CI'da ölçülmedi (sahte sağlayıcı kullanıldı). Gerçek sağlayıcıyla
+  çalışmak için API anahtarı gerekir.
+* **Gerçek görev tamamlama** (eşya teslim etme, ödül alma) CI'da oynanmadı; görev verisinin değişmediği ölçüldü.
+* **Fabric** modülü derlenmiyor ve sınanmadı.
+* **Büyük mod paketleri** (yüzlerce mod) ve binlerce metinle performans sınanmadı.
+* `gradlew.bat` (Windows) çalıştırılmadı; aynı Gradle görevi Linux'ta `./gradlew` ile çalıştırıldı.
+* Doku/resim içine çizilmiş yazılar ve sohbet mesajları bilerek çevrilmez.
+
+## Jar dosyaları
+
+* 1.20.1: `forge/build/libs/AutoTranslation-1.3.0+mc1.20.1-forge.jar` (CI çıktısı `forge-libs`).
+* Diğer sürümler: `Other Minecraft versions` iş akışının `jar-<modül>` çıktıları.
