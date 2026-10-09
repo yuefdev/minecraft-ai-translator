@@ -42,6 +42,12 @@ public class ScreenTranslationHelper {
         add(StructureBlockEditScreen.class.getName());
         add(MinecartCommandBlockEditScreen.class.getName());
         add(JigsawBlockEditScreen.class.getName());
+        // names typed by the player (worlds, servers, anvil renames) are not text to translate
+        add(AnvilScreen.class.getName());
+        add("net.minecraft.client.gui.screens.worldselection.");
+        add("net.minecraft.client.gui.screens.multiplayer.");
+        add("net.minecraft.client.gui.screens.social.");
+        add("com.mojang.realmsclient.");
         add("dev.ftb.mods.ftblibrary.config.ui.");
         add("dev.ftb.mods.ftbquests.client.gui.SelectQuestObjectScreen");
         add("dev.ftb.mods.ftbquests.client.gui.MultilineTextEditorScreen");

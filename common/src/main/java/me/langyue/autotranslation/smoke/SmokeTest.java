@@ -167,7 +167,8 @@ public final class SmokeTest {
                                 + " | last error: " + TranslationRuntime.service().stats().lastError())));
         WAITING.add(new Pending("generic: hard-coded English text on a mod screen is translated without any per-screen setting",
                 () -> {
-                    if (!reloaded[0]) return false;
+                    // last of all: while an ordinary screen is open every other check would see doubly translated text
+                    if (!reloaded[0] || WAITING.size() > 1) return false;
                     if (!(minecraft.screen instanceof SmokeScreen)) {
                         minecraft.setScreen(new SmokeScreen());
                         return false;

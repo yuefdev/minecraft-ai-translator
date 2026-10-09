@@ -107,7 +107,7 @@ public class Config implements ConfigData {
 
     @Comment("屏幕翻译排除原版屏幕")
     @ConfigEntry.Gui.Tooltip
-    public boolean ignoreOriginalScreen = true;
+    public boolean ignoreOriginalScreen = false;
 
     @Comment("是否在翻译后的文本里增加原文显示")
     public boolean appendOriginal = true;
