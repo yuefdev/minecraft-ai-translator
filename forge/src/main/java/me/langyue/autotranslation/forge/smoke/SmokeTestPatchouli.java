@@ -1,4 +1,4 @@
-package me.langyue.autotranslation.smoke;
+package me.langyue.autotranslation.forge.smoke;
 
 import me.langyue.autotranslation.tr.TranslationRuntime;
 import net.minecraft.network.chat.Component;
@@ -17,34 +17,34 @@ final class SmokeTestPatchouli {
     }
 
     static void run() {
-        SmokeTest.expectMethod("vazkii.patchouli.client.book.BookEntry", "translateName", "patchouli: BookEntry.getName hooked");
-        SmokeTest.expectMethod("vazkii.patchouli.client.book.BookCategory", "translateName", "patchouli: BookCategory.getName hooked");
-        SmokeTest.expectMethod("vazkii.patchouli.client.book.BookPage", "translateLabel", "patchouli: BookPage.i18n hooked");
-        SmokeTest.expectMethod("vazkii.patchouli.client.book.gui.BookTextRenderer", "translateBeforeLayout", "patchouli: BookTextRenderer hooked before layout");
+        me.langyue.autotranslation.smoke.SmokeTest.expectMethod("vazkii.patchouli.client.book.BookEntry", "translateName", "patchouli: BookEntry.getName hooked");
+        me.langyue.autotranslation.smoke.SmokeTest.expectMethod("vazkii.patchouli.client.book.BookCategory", "translateName", "patchouli: BookCategory.getName hooked");
+        me.langyue.autotranslation.smoke.SmokeTest.expectMethod("vazkii.patchouli.client.book.BookPage", "translateLabel", "patchouli: BookPage.i18n hooked");
+        me.langyue.autotranslation.smoke.SmokeTest.expectMethod("vazkii.patchouli.client.book.gui.BookTextRenderer", "translateBeforeLayout", "patchouli: BookTextRenderer hooked before layout");
         try {
             var book = allocateBook();
             var page = new vazkii.patchouli.client.book.page.PageText();
             page.book = book;
             String before = page.i18n("Iron Age");
-            SmokeTest.check("patchouli: original label shown while translation is pending", before.equals("Iron Age"), before);
-            SmokeTest.WAITING.add(new SmokeTest.Pending("patchouli: page title translated through BookPage.i18n -> pipeline -> provider",
+            me.langyue.autotranslation.smoke.SmokeTest.check("patchouli: original label shown while translation is pending", before.equals("Iron Age"), before);
+            me.langyue.autotranslation.smoke.SmokeTest.WAITING.add(new me.langyue.autotranslation.smoke.SmokeTest.Pending("patchouli: page title translated through BookPage.i18n -> pipeline -> provider",
                     () -> page.i18n("Iron Age").equals("TR| Iron Age"), 600,
-                    () -> SmokeTest.check("patchouli: page title translated through BookPage.i18n -> pipeline -> provider", false,
+                    () -> me.langyue.autotranslation.smoke.SmokeTest.check("patchouli: page title translated through BookPage.i18n -> pipeline -> provider", false,
                             page.i18n("Iron Age") + " | last error: " + TranslationRuntime.service().stats().lastError())));
             String markup = "Smelt the ore in a $(item)furnace$(), then $(l:smoke:book/entry)read more$(/l).$(br)Done.";
             var original = Component.literal(markup);
-            me.langyue.autotranslation.tr.patchouli.PatchouliSupport.translatePageText(book, original);
-            SmokeTest.WAITING.add(new SmokeTest.Pending("patchouli: page markup commands preserved in the translation",
+            me.langyue.autotranslation.forge.tr.patchouli.PatchouliSupport.translatePageText(book, original);
+            me.langyue.autotranslation.smoke.SmokeTest.WAITING.add(new me.langyue.autotranslation.smoke.SmokeTest.Pending("patchouli: page markup commands preserved in the translation",
                     () -> {
-                        Component translated = me.langyue.autotranslation.tr.patchouli.PatchouliSupport.translatePageText(book, original);
+                        Component translated = me.langyue.autotranslation.forge.tr.patchouli.PatchouliSupport.translatePageText(book, original);
                         String text = translated.getString();
                         return text.startsWith("TR| ") && text.contains("$(item)furnace$()")
                                 && text.contains("$(l:smoke:book/entry)read more$(/l)") && text.contains("$(br)");
                     }, 600,
-                    () -> SmokeTest.check("patchouli: page markup commands preserved in the translation", false,
-                            me.langyue.autotranslation.tr.patchouli.PatchouliSupport.translatePageText(book, original).getString())));
+                    () -> me.langyue.autotranslation.smoke.SmokeTest.check("patchouli: page markup commands preserved in the translation", false,
+                            me.langyue.autotranslation.forge.tr.patchouli.PatchouliSupport.translatePageText(book, original).getString())));
         } catch (Throwable t) {
-            SmokeTest.check("patchouli: functional test setup", false, t.toString());
+            me.langyue.autotranslation.smoke.SmokeTest.check("patchouli: functional test setup", false, t.toString());
         }
     }
 

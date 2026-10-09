@@ -1,4 +1,4 @@
-package me.langyue.autotranslation.tr.ftb;
+package me.langyue.autotranslation.forge.tr.ftb;
 
 import me.langyue.autotranslation.AutoTranslation;
 import me.langyue.autotranslation.tr.TranslationRuntime;

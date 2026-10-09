@@ -1,6 +1,6 @@
-package me.langyue.autotranslation.mixin.compat.patchouli;
+package me.langyue.autotranslation.forge.mixin.compat.patchouli;
 
-import me.langyue.autotranslation.tr.patchouli.PatchouliSupport;
+import me.langyue.autotranslation.forge.tr.patchouli.PatchouliSupport;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;

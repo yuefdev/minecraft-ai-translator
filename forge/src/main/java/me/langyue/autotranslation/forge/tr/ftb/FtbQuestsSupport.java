@@ -1,4 +1,4 @@
-package me.langyue.autotranslation.tr.ftb;
+package me.langyue.autotranslation.forge.tr.ftb;
 
 import dev.ftb.mods.ftblibrary.ui.ScreenWrapper;
 import dev.ftb.mods.ftbquests.client.ClientQuestFile;

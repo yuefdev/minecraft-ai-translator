@@ -15,7 +15,9 @@ import java.util.Set;
 public final class AutoTranslationMixinPlugin implements IMixinConfigPlugin {
     private static final Map<String, String> REQUIRED_MOD_BY_PACKAGE = Map.of(
             "me.langyue.autotranslation.mixin.compat.ftbquests.", "ftbquests",
-            "me.langyue.autotranslation.mixin.compat.patchouli.", "patchouli"
+            "me.langyue.autotranslation.mixin.compat.patchouli.", "patchouli",
+            "me.langyue.autotranslation.forge.mixin.compat.ftbquests.", "ftbquests",
+            "me.langyue.autotranslation.forge.mixin.compat.patchouli.", "patchouli"
     );
 
     @Override

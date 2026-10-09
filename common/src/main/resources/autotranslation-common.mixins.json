@@ -20,13 +20,6 @@
     "MutableComponentMixin",
     "ScreenMixin",
     "TooltipMixin",
-    "compat.ftbquests.ChapterButtonMixin",
-    "compat.ftbquests.QuestMixin",
-    "compat.ftbquests.QuestObjectBaseMixin",
-    "compat.patchouli.BookCategoryMixin",
-    "compat.patchouli.BookEntryMixin",
-    "compat.patchouli.BookPageMixin",
-    "compat.patchouli.BookTextRendererMixin",
     "compat.patchouli.SpanMixin",
     "compat.patchouli.WordMixin"
   ],

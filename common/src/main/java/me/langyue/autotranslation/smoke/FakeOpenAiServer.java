@@ -3,6 +3,7 @@ package me.langyue.autotranslation.smoke;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import me.langyue.autotranslation.AutoTranslation;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -30,6 +31,11 @@ final class FakeOpenAiServer implements AutoCloseable {
         thread = new Thread(this::serve, "AutoTranslation-SmokeServer");
         thread.setDaemon(true);
         thread.start();
+        AutoTranslation.LOGGER.info("[smoke-server] listening on {}", socket.getLocalSocketAddress());
+    }
+
+    String describe() {
+        return "bound to " + socket.getLocalSocketAddress() + ", requests served: " + requests.get();
     }
 
     int port() {
@@ -41,8 +47,9 @@ final class FakeOpenAiServer implements AutoCloseable {
             try (Socket client = socket.accept()) {
                 client.setSoTimeout(5000);
                 handle(client);
-            } catch (IOException e) {
+            } catch (Throwable t) {
                 if (socket.isClosed()) return;
+                AutoTranslation.LOGGER.warn("[smoke-server] request failed: {}", t.toString());
             }
         }
     }
@@ -59,6 +66,7 @@ final class FakeOpenAiServer implements AutoCloseable {
             previous = c;
             if (newlines == 2) break;
         }
+        if (head.length() == 0) return; // connection probe without a request
         int length = 0;
         for (String line : head.toString().split("\r\n")) {
             String lower = line.toLowerCase();

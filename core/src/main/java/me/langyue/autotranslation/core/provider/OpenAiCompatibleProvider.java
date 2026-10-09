@@ -112,6 +112,7 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
         } catch (UnknownHostException e) {
             throw new ProviderException(ProviderException.Kind.NETWORK, "Unknown host: " + s.host());
         } catch (ConnectException e) {
+            CoreLog.debug("Connect to " + s.host() + " failed: " + e);
             throw new ProviderException(ProviderException.Kind.NETWORK, "Could not connect to " + s.host());
         } catch (IOException e) {
             throw new ProviderException(ProviderException.Kind.NETWORK, "Network error: " + Redactor.redact(e));

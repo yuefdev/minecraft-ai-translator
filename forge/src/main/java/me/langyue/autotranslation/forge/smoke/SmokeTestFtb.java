@@ -1,4 +1,4 @@
-package me.langyue.autotranslation.smoke;
+package me.langyue.autotranslation.forge.smoke;
 
 import me.langyue.autotranslation.tr.TranslationRuntime;
 import net.minecraft.network.chat.Component;
@@ -16,9 +16,9 @@ final class SmokeTestFtb {
     }
 
     static void run() {
-        SmokeTest.expectField("dev.ftb.mods.ftbquests.quest.QuestObjectBase", "at$title", "ftbquests: QuestObjectBase mixin applied");
-        SmokeTest.expectField("dev.ftb.mods.ftbquests.quest.Quest", "at$description", "ftbquests: Quest mixin applied");
-        SmokeTest.expectMethod("dev.ftb.mods.ftbquests.client.gui.quests.ChapterPanel$ChapterButton", "translateChapterSubtitle", "ftbquests: chapter button redirect applied");
+        me.langyue.autotranslation.smoke.SmokeTest.expectField("dev.ftb.mods.ftbquests.quest.QuestObjectBase", "at$title", "ftbquests: QuestObjectBase mixin applied");
+        me.langyue.autotranslation.smoke.SmokeTest.expectField("dev.ftb.mods.ftbquests.quest.Quest", "at$description", "ftbquests: Quest mixin applied");
+        me.langyue.autotranslation.smoke.SmokeTest.expectMethod("dev.ftb.mods.ftbquests.client.gui.quests.ChapterPanel$ChapterButton", "translateChapterSubtitle", "ftbquests: chapter button redirect applied");
         try {
             dev.ftb.mods.ftbquests.client.ClientQuestFile file = new dev.ftb.mods.ftbquests.client.ClientQuestFile();
             var group = new dev.ftb.mods.ftbquests.quest.ChapterGroup(0x10L, file);
@@ -32,25 +32,25 @@ final class SmokeTestFtb {
             quest.getRawDescription().add("Bring 25 ingots back to the village.");
             String codeBefore = quest.getCodeString();
             Component first = quest.getTitle();
-            SmokeTest.check("ftbquests: original title is shown while translation is pending",
+            me.langyue.autotranslation.smoke.SmokeTest.check("ftbquests: original title is shown while translation is pending",
                     first.getString().contains("Collect") && !first.getString().startsWith("TR|"), first.getString());
-            SmokeTest.WAITING.add(new SmokeTest.Pending("ftbquests: title translated through FTB Quests -> pipeline -> provider",
+            me.langyue.autotranslation.smoke.SmokeTest.WAITING.add(new me.langyue.autotranslation.smoke.SmokeTest.Pending("ftbquests: title translated through FTB Quests -> pipeline -> provider",
                     () -> quest.getTitle().getString().startsWith("TR| Collect Iron Ingots"), 600,
-                    () -> SmokeTest.check("ftbquests: title translated through FTB Quests -> pipeline -> provider", false,
+                    () -> me.langyue.autotranslation.smoke.SmokeTest.check("ftbquests: title translated through FTB Quests -> pipeline -> provider", false,
                             "title stayed: " + quest.getTitle().getString() + " | last error: " + TranslationRuntime.service().stats().lastError())));
-            SmokeTest.WAITING.add(new SmokeTest.Pending("ftbquests: description translated with page break and line count preserved",
+            me.langyue.autotranslation.smoke.SmokeTest.WAITING.add(new me.langyue.autotranslation.smoke.SmokeTest.Pending("ftbquests: description translated with page break and line count preserved",
                     () -> {
                         var lines = quest.getDescription();
                         return lines.size() == 3 && lines.get(0).getString().startsWith("TR| Mine some iron")
                                 && lines.get(1).getString().equals("{@pagebreak}")
                                 && lines.get(2).getString().startsWith("TR| Bring 25 ingots");
                     }, 600,
-                    () -> SmokeTest.check("ftbquests: description translated with page break and line count preserved", false,
+                    () -> me.langyue.autotranslation.smoke.SmokeTest.check("ftbquests: description translated with page break and line count preserved", false,
                             quest.getDescription().stream().map(Component::getString).toList().toString())));
-            SmokeTest.WAITING.add(new SmokeTest.Pending("ftbquests: subtitle translated",
+            me.langyue.autotranslation.smoke.SmokeTest.WAITING.add(new me.langyue.autotranslation.smoke.SmokeTest.Pending("ftbquests: subtitle translated",
                     () -> quest.getSubtitle().getString().startsWith("TR| A short subtitle"), 600,
-                    () -> SmokeTest.check("ftbquests: subtitle translated", false, quest.getSubtitle().getString())));
-            SmokeTest.WAITING.add(new SmokeTest.Pending("ftbquests: data untouched (raw text, id, colour style)",
+                    () -> me.langyue.autotranslation.smoke.SmokeTest.check("ftbquests: subtitle translated", false, quest.getSubtitle().getString())));
+            me.langyue.autotranslation.smoke.SmokeTest.WAITING.add(new me.langyue.autotranslation.smoke.SmokeTest.Pending("ftbquests: data untouched (raw text, id, colour style)",
                     () -> {
                         boolean raw = quest.getRawTitle().equals(ORIGINAL_TITLE)
                                 && quest.getRawSubtitle().equals("A short subtitle for this quest")
@@ -61,9 +61,9 @@ final class SmokeTestFtb {
                                         && s.getStyle().getColor().equals(net.minecraft.network.chat.TextColor.fromLegacyFormat(net.minecraft.ChatFormatting.GOLD)));
                         return raw && gold && quest.getTitle().getString().startsWith("TR|");
                     }, 600,
-                    () -> SmokeTest.check("ftbquests: data untouched (raw text, id, colour style)", false, quest.getTitle().toString())));
+                    () -> me.langyue.autotranslation.smoke.SmokeTest.check("ftbquests: data untouched (raw text, id, colour style)", false, quest.getTitle().toString())));
         } catch (Throwable t) {
-            SmokeTest.check("ftbquests: functional test setup", false, t.toString());
+            me.langyue.autotranslation.smoke.SmokeTest.check("ftbquests: functional test setup", false, t.toString());
         }
     }
 

@@ -1,4 +1,4 @@
-package me.langyue.autotranslation.tr.patchouli;
+package me.langyue.autotranslation.forge.tr.patchouli;
 
 import me.langyue.autotranslation.AutoTranslation;
 import me.langyue.autotranslation.tr.TranslationRuntime;

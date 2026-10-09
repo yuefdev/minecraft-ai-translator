@@ -1,8 +1,8 @@
-package me.langyue.autotranslation.mixin.compat.ftbquests;
+package me.langyue.autotranslation.forge.mixin.compat.ftbquests;
 
 import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
 import me.langyue.autotranslation.tr.TranslationRuntime;
-import me.langyue.autotranslation.tr.ftb.FtbQuestsSupport;
+import me.langyue.autotranslation.forge.tr.ftb.FtbQuestsSupport;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;

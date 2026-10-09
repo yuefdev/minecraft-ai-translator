@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import dev.architectury.event.events.client.ClientTickEvent;
 import me.langyue.autotranslation.AutoTranslation;
 import me.langyue.autotranslation.core.util.Secret;
+import me.langyue.autotranslation.tr.Integrations;
 import me.langyue.autotranslation.tr.TranslationRuntime;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -29,21 +30,21 @@ import java.util.function.BooleanSupplier;
  * that the game still started and that its hooks were skipped.
  */
 public final class SmokeTest {
-    static final List<JsonObject> CHECKS = new ArrayList<>();
+    public static final List<JsonObject> CHECKS = new ArrayList<>();
     private static int ticks = 0;
     private static boolean started = false;
     private static boolean finished = false;
     private static FakeOpenAiServer server;
-    static final List<Pending> WAITING = new ArrayList<>();
+    public static final List<Pending> WAITING = new ArrayList<>();
 
     /** A condition that is polled every client tick until it holds or its tick budget runs out. */
-    static final class Pending {
+    public static final class Pending {
         final String name;
         final BooleanSupplier condition;
         int remaining;
         final Runnable onTimeout;
 
-        Pending(String name, BooleanSupplier condition, int deadlineTicks, Runnable onTimeout) {
+        public Pending(String name, BooleanSupplier condition, int deadlineTicks, Runnable onTimeout) {
             this.name = name;
             this.condition = condition;
             this.remaining = deadlineTicks;
@@ -105,7 +106,17 @@ public final class SmokeTest {
         TranslationRuntime.service();
         check("translation runtime started", TranslationRuntime.service() != null, "");
 
+        me.langyue.autotranslation.core.util.CoreLog.setDebug(true);
         server = new FakeOpenAiServer();
+        try (java.net.Socket probe = new java.net.Socket()) {
+            probe.connect(new java.net.InetSocketAddress("127.0.0.1", server.port()), 3000);
+            check("fake provider endpoint is reachable from the game", true, server.describe());
+        } catch (java.io.IOException e) {
+            check("fake provider endpoint is reachable from the game", false, e + " | " + server.describe()
+                    + " | preferIPv6=" + System.getProperty("java.net.preferIPv6Addresses")
+                    + " preferIPv4Stack=" + System.getProperty("java.net.preferIPv4Stack")
+                    + " loopback=" + java.net.InetAddress.getLoopbackAddress());
+        }
         var settings = AutoTranslation.CONFIG.turkish;
         settings.enabled = true;
         settings.translateQuests = true;
@@ -122,8 +133,9 @@ public final class SmokeTest {
         check("provider configured against local fake endpoint", TranslationRuntime.providerConfigured(), "");
 
         checkMixinsApplied();
-        checkOptionalMod("ftbquests", "dev.ftb.mods.ftbquests.quest.QuestObjectBase", () -> SmokeTestFtb.run());
-        checkOptionalMod("patchouli", "vazkii.patchouli.client.book.BookPage", () -> SmokeTestPatchouli.run());
+        for (Integrations.SmokeCheck optional : Integrations.smokeChecks()) {
+            checkOptionalMod(optional.modId(), optional.probeClass(), optional.functional());
+        }
     }
 
     private static void checkMixinsApplied() {
@@ -153,7 +165,7 @@ public final class SmokeTest {
         }
     }
 
-    static void expectField(String className, String field, String name) {
+    public static void expectField(String className, String field, String name) {
         try {
             Class.forName(className, false, SmokeTest.class.getClassLoader()).getDeclaredField(field);
             check(name, true, "");
@@ -162,7 +174,7 @@ public final class SmokeTest {
         }
     }
 
-    static void expectMethod(String className, String fragment, String name) {
+    public static void expectMethod(String className, String fragment, String name) {
         try {
             Class<?> cls = Class.forName(className, false, SmokeTest.class.getClassLoader());
             boolean found = Arrays.stream(cls.getDeclaredMethods()).anyMatch(m -> m.getName().contains(fragment));
@@ -172,7 +184,7 @@ public final class SmokeTest {
         }
     }
 
-    static void check(String name, boolean ok, String detail) {
+    public static void check(String name, boolean ok, String detail) {
         JsonObject o = new JsonObject();
         o.addProperty("name", name);
         o.addProperty("ok", ok);

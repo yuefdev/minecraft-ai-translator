@@ -38,13 +38,7 @@ public class AutoTranslation {
         ResourceManager.init();
         ScreenTranslationHelper.init();
         TranslationRuntime.init();
-        // optional integrations: the classes below are only loaded when the mod is installed
-        if (TranslationRuntime.isModLoaded("ftbquests")) {
-            me.langyue.autotranslation.tr.ftb.FtbQuestsBootstrap.init();
-        }
-        if (TranslationRuntime.isModLoaded("patchouli")) {
-            me.langyue.autotranslation.tr.patchouli.PatchouliBootstrap.init();
-        }
+        me.langyue.autotranslation.tr.Integrations.initAll();
         KeyMappingRegistry.register(SCREEN_TRANSLATE_KEYMAPPING);
         CommandRegistrationEvent.EVENT.register((dispatcher, dedicated, ignored) -> AutoTranslationCommands.register(dispatcher));
     }

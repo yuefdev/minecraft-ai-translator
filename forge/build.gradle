@@ -47,6 +47,12 @@ dependencies {
     modApi "dev.architectury:architectury-forge:${rootProject.architectury_version}"
     modApi "me.shedaniel.cloth:cloth-config-forge:${rootProject.cloth_config_version}"
 
+    // Optional integrations live in this module (not in common) and are compile-only: the game starts without them.
+    modCompileOnly("dev.ftb.mods:ftb-library-forge:${rootProject.ftb_library_version}") { transitive = false }
+    modCompileOnly("dev.ftb.mods:ftb-teams-forge:${rootProject.ftb_teams_version}") { transitive = false }
+    modCompileOnly("dev.ftb.mods:ftb-quests-forge:${rootProject.ftb_quests_version}") { transitive = false }
+    modCompileOnly("vazkii.patchouli:Patchouli:${rootProject.patchouli_version.replace('-FABRIC', '-FORGE')}")
+
     common(project(path: ":common", configuration: "namedElements")) {
         transitive = false
         exclude(group: "net.fabricmc.fabric-api")

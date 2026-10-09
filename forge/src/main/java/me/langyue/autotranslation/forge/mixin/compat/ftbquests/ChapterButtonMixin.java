@@ -1,8 +1,8 @@
-package me.langyue.autotranslation.mixin.compat.ftbquests;
+package me.langyue.autotranslation.forge.mixin.compat.ftbquests;
 
 import dev.ftb.mods.ftbquests.client.gui.quests.ChapterPanel;
 import dev.ftb.mods.ftbquests.quest.Chapter;
-import me.langyue.autotranslation.tr.ftb.FtbQuestsSupport;
+import me.langyue.autotranslation.forge.tr.ftb.FtbQuestsSupport;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
