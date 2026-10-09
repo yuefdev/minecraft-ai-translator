@@ -1,18 +1,12 @@
 name: Discover dependency versions
 
-# Prints the published versions of the dependencies each Minecraft version needs, so that build files use real
-# coordinates instead of guesses. Needs outbound network access, which GitHub-hosted runners have.
+# Prints the published versions of every dependency we need for the additional Minecraft versions,
+# so the per-version modules are built from coordinates that really exist.
 on:
   workflow_dispatch:
   push:
-    branches:
-      - 'claude/discover/**'
-      - 'claude/happy-rubin-fw6rqk'
-    paths:
-      - '.github/workflows/discover.yml'
-
-permissions:
-  contents: read
+    branches: [ "claude/happy-rubin-fw6rqk" ]
+    paths: [ ".github/workflows/discover.yml" ]
 
 jobs:
   discover:
@@ -20,23 +14,40 @@ jobs:
     steps:
       - name: Fetch maven metadata
         run: |
-          show() { # name url grep-pattern
+          # name url grep-pattern  -> last 3 versions of every distinct leading prefix, version-sorted
+          show() {
             echo "=== $1"
             curl -fsSL --max-time 60 "$2" -o meta.xml || { echo "(could not fetch $2)"; return; }
-            grep -oE "<version>[^<]+</version>" meta.xml | sed -E 's/<[^>]+>//g' | grep -E "$3" | tail -n 12 | tr '\n' ' '
-            echo
+            grep -oE "<version>[^<]+</version>" meta.xml | sed -E 's/<[^>]+>//g' | grep -E "$3" | sort -V \
+              | awk -v n=3 '{ p=$0; sub(/[-.].*/, "", p); c[p]++; l[p]=l[p] " " $0; a[p]=a[p] ? a[p] " " $0 : $0 }
+                            END { for (k in a) { m=split(a[k], x, " "); s=""; for (i=(m>n?m-n+1:1); i<=m; i++) s=s " " x[i]; print "  " k ":" s } }' | sort
           }
-          show "FTB Quests forge"            https://maven.ftb.dev/releases/dev/ftb/mods/ftb-quests-forge/maven-metadata.xml "^(1605|1802|1902|2001)\."
-          show "FTB Quests neoforge"         https://maven.ftb.dev/releases/dev/ftb/mods/ftb-quests-neoforge/maven-metadata.xml "^(2101|2110)\."
-          show "FTB Library forge"           https://maven.ftb.dev/releases/dev/ftb/mods/ftb-library-forge/maven-metadata.xml "^(1605|1802|1902|2001)\."
-          show "FTB Library neoforge"        https://maven.ftb.dev/releases/dev/ftb/mods/ftb-library-neoforge/maven-metadata.xml "^(2101|2110)\."
-          show "FTB Teams forge"             https://maven.ftb.dev/releases/dev/ftb/mods/ftb-teams-forge/maven-metadata.xml "^(1605|1802|1902|2001)\."
-          show "FTB Teams neoforge"          https://maven.ftb.dev/releases/dev/ftb/mods/ftb-teams-neoforge/maven-metadata.xml "^(2101|2110)\."
-          show "Patchouli"                   https://maven.blamejared.com/vazkii/patchouli/Patchouli/maven-metadata.xml "FORGE|NEOFORGE|^1\.(16|18|19|21)"
-          show "Forge 1.12.2/1.16.5/1.18.2/1.19.2" https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml "^(1\.12\.2|1\.16\.5|1\.18\.2|1\.19\.2)-"
-          show "NeoForge 21.1.x"             https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml "^21\.1\."
-          show "Architectury API forge"      https://maven.architectury.dev/dev/architectury/architectury-forge/maven-metadata.xml "^(1\.|4\.|6\.|9\.|13\.)"
-          show "Cloth Config forge"          https://maven.shedaniel.me/me/shedaniel/cloth/cloth-config-forge/maven-metadata.xml "^(4\.|6\.|8\.|11\.)"
-          show "Cloth Config neoforge"       https://maven.shedaniel.me/me/shedaniel/cloth/cloth-config-neoforge/maven-metadata.xml "^15\."
-          show "MixinBooter (1.12.2)"        https://maven.cleanroommc.com/zone/rong/mixinbooter/maven-metadata.xml "^[0-9]"
-          show "RetroFuturaGradle plugin"    https://plugins.gradle.org/m2/com/gtnewhorizons/retrofuturagradle/com.gtnewhorizons.retrofuturagradle.gradle.plugin/maven-metadata.xml "^1\."
+          show "FTB Quests forge"     https://maven.ftb.dev/releases/dev/ftb/mods/ftb-quests-forge/maven-metadata.xml "^(1605|1802|1902|2001)\."
+          show "FTB Quests neoforge"  https://maven.ftb.dev/releases/dev/ftb/mods/ftb-quests-neoforge/maven-metadata.xml "^2[0-9]{3}\."
+          show "FTB Quests fabric"    https://maven.ftb.dev/releases/dev/ftb/mods/ftb-quests-fabric/maven-metadata.xml "^[0-9]"
+          show "FTB Library forge"    https://maven.ftb.dev/releases/dev/ftb/mods/ftb-library-forge/maven-metadata.xml "^(1605|1802|1902|2001)\."
+          show "FTB Library neoforge" https://maven.ftb.dev/releases/dev/ftb/mods/ftb-library-neoforge/maven-metadata.xml "^2[0-9]{3}\."
+          show "FTB Teams forge"      https://maven.ftb.dev/releases/dev/ftb/mods/ftb-teams-forge/maven-metadata.xml "^(1605|1802|1902|2001)\."
+          show "FTB Teams neoforge"   https://maven.ftb.dev/releases/dev/ftb/mods/ftb-teams-neoforge/maven-metadata.xml "^2[0-9]{3}\."
+          show "Patchouli"            https://maven.blamejared.com/vazkii/patchouli/Patchouli/maven-metadata.xml "^1\.(16|18|19|20|21)|^[0-9]+\.[0-9]+-"
+          show "Forge (all MC)"       https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml "^(1\.12\.2|1\.16\.5|1\.18\.2|1\.19\.2|1\.19\.4|1\.20\.1|1\.20\.4|1\.20\.6|1\.21\.1)-"
+          show "NeoForge"             https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml "^[0-9]"
+          show "Architectury forge"   https://maven.architectury.dev/dev/architectury/architectury-forge/maven-metadata.xml "^[0-9]"
+          show "Architectury neoforge" https://maven.architectury.dev/dev/architectury/architectury-neoforge/maven-metadata.xml "^[0-9]"
+          show "Cloth Config forge"   https://maven.shedaniel.me/me/shedaniel/cloth/cloth-config-forge/maven-metadata.xml "^[0-9]"
+          show "Cloth Config neoforge" https://maven.shedaniel.me/me/shedaniel/cloth/cloth-config-neoforge/maven-metadata.xml "^[0-9]"
+          show "MixinBooter (1.12.2)" https://maven.cleanroommc.com/zone/rong/mixinbooter/maven-metadata.xml "^[0-9]"
+          show "Fabric loader"        https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml "^0\.1[5-9]"
+          show "Fabric API"           https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml "^0\.[0-9]+\.[0-9]+\+(1\.(16|18|19|20|21)|2[0-9])"
+          echo "=== Mojang version manifest"
+          curl -fsSL --max-time 60 https://piston-meta.mojang.com/mc/game/version_manifest_v2.json -o vm.json && \
+            python3 -c "import json;d=json.load(open('vm.json'));print(d['latest']);r=[v['id'] for v in d['versions'] if v['type']=='release'];print('releases (newest first):',' '.join(r[:25]))"
+          echo "=== Plugin portals"
+          for u in \
+            https://plugins.gradle.org/m2/com/gtnewhorizons/retrofuturagradle/com.gtnewhorizons.retrofuturagradle.gradle.plugin/maven-metadata.xml \
+            https://plugins.gradle.org/m2/net/neoforged/moddev/net.neoforged.moddev.gradle.plugin/maven-metadata.xml \
+            https://plugins.gradle.org/m2/net/neoforged/moddev/legacyforge/net.neoforged.moddev.legacyforge.gradle.plugin/maven-metadata.xml \
+            https://maven.fabricmc.net/net/fabricmc/fabric-loom/maven-metadata.xml \
+            https://maven.architectury.dev/dev/architectury/architectury-loom/maven-metadata.xml ; do
+            echo "-- $u"; curl -fsSL --max-time 60 "$u" -o m.xml && grep -oE "<version>[^<]+</version>" m.xml | sed -E 's/<[^>]+>//g' | sort -V | tail -n 4 | tr '\n' ' ' || echo "(not found)"; echo
+          done
