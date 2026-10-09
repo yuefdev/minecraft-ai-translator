@@ -14,7 +14,7 @@ on:
 
 concurrency:
   group: versions-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -27,6 +27,8 @@ jobs:
       matrix:
         include:
           - module: forge-1.19.2
+            java: '17'
+          - module: forge-1.18.2
             java: '17'
     steps:
       - uses: actions/checkout@v4
@@ -52,10 +54,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [forge-1.19.2]
+        module: [forge-1.19.2, forge-1.18.2]
         variant: [plain, with-ftbquests-patchouli]
         include:
           - module: forge-1.19.2
+            java: '17'
+          - module: forge-1.18.2
             java: '17'
     steps:
       - uses: actions/checkout@v4

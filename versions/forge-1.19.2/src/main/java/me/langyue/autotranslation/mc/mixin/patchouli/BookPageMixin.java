@@ -1,5 +1,6 @@
 package me.langyue.autotranslation.mc.mixin.patchouli;
 
+import me.langyue.autotranslation.mc.Texts;
 import me.langyue.autotranslation.mc.patchouli.PatchouliSupport;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
@@ -26,6 +27,6 @@ public abstract class BookPageMixin {
         BookPage page = (BookPage) (Object) this;
         if (page.book == null || cir.getReturnValue() == null) return;
         String translated = PatchouliSupport.translateLabel(page.book, cir.getReturnValue().getString());
-        if (translated != null) cir.setReturnValue(Component.literal(translated).setStyle(cir.getReturnValue().getStyle()));
+        if (translated != null) cir.setReturnValue(Texts.literal(translated).setStyle(cir.getReturnValue().getStyle()));
     }
 }

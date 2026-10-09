@@ -1,5 +1,6 @@
 package me.langyue.autotranslation.mc.ftb;
 
+import me.langyue.autotranslation.mc.Texts;
 import dev.ftb.mods.ftblibrary.ui.BaseScreen;
 import dev.ftb.mods.ftblibrary.ui.ScreenWrapper;
 import dev.ftb.mods.ftbquests.client.ClientQuestFile;
@@ -88,7 +89,7 @@ public final class FtbQuestsSupport {
         if (translated == null) return null;
         Component component = TextUtils.parseRawText(translated);
         if (engine.showOriginal()) {
-            component = component.copy().append(Component.literal(" (" + TextSupport.plainFtb(raw) + ")")
+            component = component.copy().append(Texts.literal(" (" + TextSupport.plainFtb(raw) + ")")
                     .withStyle(ChatFormatting.GRAY));
         }
         return component;

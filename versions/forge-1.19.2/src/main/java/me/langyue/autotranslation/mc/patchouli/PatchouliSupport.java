@@ -39,7 +39,7 @@ public final class PatchouliSupport {
         String translated = engine.translate(markup, pageContent(book), MaskProfile.PATCHOULI);
         if (translated == null) return text;
         if (engine.showOriginal()) translated = TextSupport.appendOriginalPatchouli(translated, markup);
-        return Component.literal(translated).setStyle(text.getStyle());
+        return Texts.literal(translated).setStyle(text.getStyle());
     }
 
     /** Entry/category names. */
@@ -54,7 +54,7 @@ public final class PatchouliSupport {
         String translated = engine.translate(text, content, MaskProfile.PATCHOULI);
         if (translated == null) return null;
         if (engine.showOriginal()) translated = translated + " (" + text + ")";
-        return Component.literal(translated).setStyle(shown.getStyle());
+        return Texts.literal(translated).setStyle(shown.getStyle());
     }
 
     /** Page titles and labels ({@code BookPage.i18n}). */

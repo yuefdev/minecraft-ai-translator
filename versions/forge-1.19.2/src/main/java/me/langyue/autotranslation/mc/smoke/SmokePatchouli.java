@@ -1,5 +1,6 @@
 package me.langyue.autotranslation.mc.smoke;
 
+import me.langyue.autotranslation.mc.Texts;
 import me.langyue.autotranslation.core.smoke.SmokeReport;
 import me.langyue.autotranslation.mc.patchouli.PatchouliSupport;
 import net.minecraft.network.chat.Component;
@@ -31,7 +32,7 @@ final class SmokePatchouli {
                     () -> page.i18n("Iron Age").equals("TR| Iron Age"), 600,
                     () -> page.i18n("Iron Age"));
             final String markup = "Smelt the ore in a $(item)furnace$(), then $(l:smoke:book/entry)read more$(/l).$(br)Done.";
-            final Component original = Component.literal(markup);
+            final Component original = Texts.literal(markup);
             PatchouliSupport.translatePageText(book, original);
             report.waitFor("patchouli: page markup commands preserved in the translation",
                     () -> {
