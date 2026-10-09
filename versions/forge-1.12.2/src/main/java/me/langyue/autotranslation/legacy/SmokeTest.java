@@ -120,6 +120,13 @@ public final class SmokeTest {
      * Text from the language file of a mod and hard-coded text on the screen of another mod must end up translated.
      */
     private static void generic(final Minecraft minecraft) {
+        boolean language = false, font = false;
+        for (String patched : Transformer.PATCHED) {
+            if (patched.startsWith("net.minecraft.client.resources.Locale") || patched.startsWith("net.minecraft.util.text.translation.LanguageMap")) language = true;
+            if (patched.startsWith("net.minecraft.client.gui.FontRenderer")) font = true;
+        }
+        REPORT.check("generic: language lookups and FontRenderer are patched", language && font, Transformer.PATCHED.toString());
+        REPORT.check("generic: sample language key present", ensureSampleKey(), "from the mod's en_us.lang or added to the loaded table");
         REPORT.waitFor("generic: language-file text of any mod is translated (I18n.format)",
                 () -> net.minecraft.client.resources.I18n.format(SAMPLE_KEY).startsWith("TR| Open the chest"), 900,
                 () -> "I18n.format -> " + net.minecraft.client.resources.I18n.format(SAMPLE_KEY)
@@ -136,7 +143,32 @@ public final class SmokeTest {
                 }, 900,
                 () -> "screen=" + minecraft.currentScreen + " lines="
                         + minecraft.fontRenderer.listFormattedStringToWidth(SAMPLE_LITERAL, 100000)
-                        + " | last error: " + Engine.get().service().stats().lastError());
+                        + " | last error: " + Engine.get().service().stats().lastError() + " | hook problem: " + Hooks.lastProblem);
+    }
+
+    /**
+     * The sample key normally comes from this mod's en_us.lang. Development runs may not expose the mod's assets as a
+     * resource pack; then the key is put into the loaded language table, so the lookup path itself is still what
+     * is checked.
+     */
+    @SuppressWarnings("unchecked")
+    private static boolean ensureSampleKey() {
+        if (net.minecraft.client.resources.I18n.hasKey(SAMPLE_KEY)) return true;
+        try {
+            for (java.lang.reflect.Field field : net.minecraft.client.resources.I18n.class.getDeclaredFields()) {
+                if (field.getType() != net.minecraft.client.resources.Locale.class) continue;
+                field.setAccessible(true);
+                Object locale = field.get(null);
+                for (java.lang.reflect.Field table : net.minecraft.client.resources.Locale.class.getDeclaredFields()) {
+                    if (!java.util.Map.class.isAssignableFrom(table.getType())) continue;
+                    table.setAccessible(true);
+                    ((java.util.Map<String, String>) table.get(locale)).put(SAMPLE_KEY, "Open the chest and collect the shiny gems.");
+                }
+            }
+        } catch (Throwable t) {
+            return false;
+        }
+        return net.minecraft.client.resources.I18n.hasKey(SAMPLE_KEY);
     }
 
     private static void betterQuesting(Engine engine) {
@@ -148,8 +180,10 @@ public final class SmokeTest {
             REPORT.check("betterquesting: original text is shown while translation is pending", text.equals(first), String.valueOf(first));
             REPORT.waitFor("betterquesting: quest text translated through QuestTranslation -> pipeline -> provider",
                     () -> ("TR| " + text).equals(call(translate, text)), 600, () -> String.valueOf(call(translate, text)));
-            REPORT.check("betterquesting: language keys are left alone", "betterquesting.gui.name".equals(call(translate, "betterquesting.gui.name")),
-                    String.valueOf(call(translate, "betterquesting.gui.name")));
+            // BetterQuesting resolves its own keys afterwards; the hook must hand them on untouched
+            REPORT.check("betterquesting: language keys are passed on untranslated",
+                    "betterquesting.gui.name".equals(Hooks.betterQuesting("betterquesting.gui.name")),
+                    Hooks.betterQuesting("betterquesting.gui.name"));
         } catch (Throwable t) {
             REPORT.check("betterquesting: functional test setup", false, t.toString());
         }

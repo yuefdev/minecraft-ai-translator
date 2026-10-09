@@ -80,16 +80,34 @@ public final class Hooks {
             new java.util.concurrent.ConcurrentHashMap<String, String>();
     private static volatile long fontGeneration = -1L;
 
+    /**
+     * Texts this class handed out as translations. Minecraft passes them on to other patched methods (a language value
+     * is drawn, drawString hands its text to renderString, listFormattedStringToWidth to wrapFormattedStringToWidth);
+     * they must not be translated a second time.
+     */
+    private static final java.util.Set<String> PRODUCED =
+            java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<String, Boolean>());
+    /** First failure inside a generic hook, for the start-up check (hooks never throw into the game). */
+    static volatile String lastProblem = "";
+
+    private static String produced(String translated) {
+        if (PRODUCED.size() > 60000) PRODUCED.clear();
+        PRODUCED.add(translated);
+        return translated;
+    }
+
     /** Language-file text of any mod: whatever a key resolved to; English prose is translated in the background. */
     public static String langValue(String key, String value) {
         try {
             Engine engine = Engine.get();
-            if (key == null || value == null || value.equals(key) || value.length() < 2 || engine == null || !engine.genericEnabled()) {
+            if (key == null || value == null || value.equals(key) || value.length() < 2 || engine == null || !engine.genericEnabled()
+                    || PRODUCED.contains(value)) {
                 return value;
             }
             String translated = engine.translateLegacy(key, value, null);
-            return translated == null ? value : translated;
+            return translated == null ? value : produced(translated);
         } catch (Throwable t) {
+            if (lastProblem.isEmpty()) lastProblem = "langValue: " + t;
             return value;
         }
     }
@@ -98,7 +116,8 @@ public final class Hooks {
     public static String fontText(String text) {
         try {
             Engine engine = Engine.get();
-            if (text == null || text.length() < 2 || engine == null || !engine.genericEnabled() || !GenericGate.screenAllowed()) {
+            if (text == null || text.length() < 2 || engine == null || !engine.genericEnabled() || PRODUCED.contains(text)
+                    || !GenericGate.screenAllowed()) {
                 return text;
             }
             long generation = engine.generation();
@@ -109,11 +128,12 @@ public final class Hooks {
             String cached = FONT_CACHE.get(text);
             if (cached == null) {
                 String translated = engine.translate(text, INTERFACE, MaskProfile.PLAIN);
-                cached = translated == null ? "" : translated;
+                cached = translated == null ? "" : produced(translated);
                 FONT_CACHE.put(text, cached);
             }
             return cached.isEmpty() ? text : cached;
         } catch (Throwable t) {
+            if (lastProblem.isEmpty()) lastProblem = "fontText: " + t;
             return text;
         }
     }

@@ -33,6 +33,9 @@ public class Transformer implements IClassTransformer {
     private static final Logger LOGGER = LogManager.getLogger("AutoTranslation/ASM");
     private static final String HOOKS = "me/langyue/autotranslation/legacy/Hooks";
     private static final String STRING = "(Ljava/lang/String;)Ljava/lang/String;";
+    /** What was patched, for the start-up check ("class: count"). */
+    static final java.util.Set<String> PATCHED =
+            java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<String, Boolean>());
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] bytes) {
@@ -96,6 +99,7 @@ public class Transformer implements IClassTransformer {
                 code.add(new VarInsnNode(Opcodes.ASTORE, slot));
                 m.instructions.insert(code);
                 LOGGER.info("Patched {}.{}{}", cls, method, desc);
+                PATCHED.add(cls + "." + method);
                 return write(node);
             }
         }
@@ -114,6 +118,7 @@ public class Transformer implements IClassTransformer {
                     }
                 }
                 LOGGER.info("Patched {}.{}{}", cls, method, desc);
+                PATCHED.add(cls + "." + method);
                 return write(node);
             }
         }
@@ -146,6 +151,7 @@ public class Transformer implements IClassTransformer {
             return bytes;
         }
         LOGGER.info("Patched {} language lookup method(s) of {}", patched, cls);
+        PATCHED.add(cls + ": " + patched);
         return write(node);
     }
 
@@ -177,6 +183,7 @@ public class Transformer implements IClassTransformer {
             return bytes;
         }
         LOGGER.info("Patched {} text method(s) of {}", patched, cls);
+        PATCHED.add(cls + ": " + patched);
         return write(node);
     }
 
