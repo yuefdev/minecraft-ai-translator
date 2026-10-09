@@ -233,4 +233,21 @@ class MaskerTest {
         MaskedText m = masker.mask("Fire and Ice", MaskProfile.PLAIN);
         assertTrue(masker.restore(m, "Ateş & Buz").ok());
     }
+
+    @Test
+    void progressAndRatioNumbersMustKeepTheirOrder() {
+        MaskedText m = masker.mask("Progress: 3/10 done at 12:30", MaskProfile.PLAIN);
+        assertTrue(masker.restore(m, "İlerleme: 3/10 tamamlandı, saat 12:30").ok());
+        assertTrue(masker.restore(m, "İlerleme: 3 / 10 tamamlandı, saat 12:30").ok(), "spacing may change");
+        assertFalse(masker.restore(m, "İlerleme: 10/3 tamamlandı, saat 12:30").ok(), "swapped progress");
+        assertFalse(masker.restore(m, "İlerleme: 3/10 tamamlandı, saat 30:12").ok(), "swapped time");
+    }
+
+    @Test
+    void questProgressStaysIntactInAFullQuestSentence() {
+        MaskedText m = masker.mask("&6Collect 25/100 Iron Ingots (id: ftbquests:abc123)", MaskProfile.FTB_RICH);
+        assertEquals(java.util.List.of("&6", "ftbquests:abc123"), m.placeholders());
+        assertTrue(masker.restore(m, "[[P0]]25/100 Demir Külçesi topla (id: [[P1]])").ok());
+        assertFalse(masker.restore(m, "[[P0]]100/25 Demir Külçesi topla (id: [[P1]])").ok());
+    }
 }

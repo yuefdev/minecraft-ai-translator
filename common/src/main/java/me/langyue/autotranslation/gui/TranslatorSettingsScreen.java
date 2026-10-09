@@ -206,45 +206,37 @@ public class TranslatorSettingsScreen extends Screen {
         String source = inputSource.strip();
         String target = inputTarget.strip();
         if (source.isEmpty() || target.isEmpty()) return;
-        try {
-            if (glossary) {
-                TranslationRuntime.glossary().put(source, target);
-                TranslationRuntime.saveGlossary();
-            } else {
-                String problem = TranslationRuntime.service().validateCorrection(source, target, MaskProfile.FTB_RICH);
-                if (problem != null) {
-                    this.message = Component.translatable("autotranslation.gui.corrections.invalid", problem).getString();
-                    return;
-                }
-                TranslationRuntime.corrections().put(source, target, null);
-                TranslationRuntime.service().invalidateMemo();
-                TranslationRuntime.onTranslationArrived();
+        if (glossary) {
+            TranslationRuntime.glossary().put(source, target);
+            TranslationRuntime.saveGlossary();
+        } else {
+            String problem = TranslationRuntime.service().validateCorrection(source, target, MaskProfile.FTB_RICH);
+            if (problem != null) {
+                this.message = Component.translatable("autotranslation.gui.corrections.invalid", problem).getString();
+                return;
             }
-            inputSource = "";
-            inputTarget = "";
-            this.message = "";
-            this.rebuildWidgets();
-        } catch (IOException e) {
-            this.message = Redactor.redact(e);
+            TranslationRuntime.saveCorrection(source, target);
+            TranslationRuntime.service().invalidateMemo();
+            TranslationRuntime.onTranslationArrived();
         }
+        inputSource = "";
+        inputTarget = "";
+        this.message = "";
+        this.rebuildWidgets();
     }
 
     private void removeSelected(boolean glossary) {
         if (list == null || list.getSelected() == null) return;
         EntryList.Row row = list.getSelected();
-        try {
-            if (glossary) {
-                TranslationRuntime.glossary().remove(row.source);
-                TranslationRuntime.saveGlossary();
-            } else {
-                TranslationRuntime.corrections().remove(row.source, null);
-                TranslationRuntime.service().invalidateMemo();
-                TranslationRuntime.onTranslationArrived();
-            }
-            this.rebuildWidgets();
-        } catch (IOException e) {
-            this.message = Redactor.redact(e);
+        if (glossary) {
+            TranslationRuntime.glossary().remove(row.source);
+            TranslationRuntime.saveGlossary();
+        } else {
+            TranslationRuntime.removeCorrection(row.source);
+            TranslationRuntime.service().invalidateMemo();
+            TranslationRuntime.onTranslationArrived();
         }
+        this.rebuildWidgets();
     }
 
     /** Sends one tiny request on a background thread; the result is shown, never the credentials. */

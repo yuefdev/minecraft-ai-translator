@@ -50,6 +50,11 @@ public final class TranslationRuntime {
     private static CorrectionStore corrections;
     private static TranslationCache cache;
     private static SecretStore secretStore;
+    private static final java.util.concurrent.ExecutorService IO = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "AutoTranslation-IO");
+        t.setDaemon(true);
+        return t;
+    });
     private static volatile boolean refreshRequested = false;
     private static long lastRefreshMillis = 0L;
 
@@ -95,6 +100,9 @@ public final class TranslationRuntime {
                 .build();
 
         ClientTickEvent.CLIENT_POST.register(TranslationRuntime::tick);
+        if (Boolean.getBoolean("autotranslation.smoketest")) {
+            me.langyue.autotranslation.smoke.SmokeTest.register();
+        }
         AutoTranslation.LOGGER.info("Translation pipeline ready (cache: {} entries, provider configured: {})",
                 cache.size(), provider.isConfigured());
     }
@@ -223,17 +231,63 @@ public final class TranslationRuntime {
         refreshRequested = true;
     }
 
+    /** Disk writes started from the UI run on a background thread so that the render thread never waits for them. */
+    public static void io(Runnable task) {
+        IO.execute(() -> {
+            try {
+                task.run();
+            } catch (RuntimeException e) {
+                AutoTranslation.LOGGER.warn("Background file operation failed: {}", e.toString());
+            }
+        });
+    }
+
     public static void setApiKey(Secret key) throws IOException {
-        secretStore.save(key);
-        apiKey = key;
+        apiKey = key; // takes effect immediately; the file is written in the background
+        io(() -> {
+            try {
+                secretStore.save(key);
+            } catch (IOException e) {
+                AutoTranslation.LOGGER.warn("Could not store the API key: {}", e.getClass().getSimpleName());
+            }
+        });
         applyConfig();
     }
 
-    public static void saveGlossary() throws IOException {
-        glossaryStore.save(GLOSSARY.terms());
+    public static void saveGlossary() {
+        Map<String, String> snapshot = new java.util.LinkedHashMap<>(GLOSSARY.terms());
+        io(() -> {
+            try {
+                glossaryStore.save(snapshot);
+            } catch (IOException e) {
+                AutoTranslation.LOGGER.warn("Could not save the glossary: {}", e.toString());
+            }
+        });
         service.invalidateMemo();
         GENERATION.incrementAndGet();
         refreshRequested = true;
+    }
+
+    public static void saveCorrection(String source, String translation) {
+        corrections.putInMemory(source, translation, null);
+        io(() -> {
+            try {
+                corrections.save();
+            } catch (IOException e) {
+                AutoTranslation.LOGGER.warn("Could not save the correction: {}", e.toString());
+            }
+        });
+    }
+
+    public static void removeCorrection(String source) {
+        corrections.removeFromMemory(source, null);
+        io(() -> {
+            try {
+                corrections.save();
+            } catch (IOException e) {
+                AutoTranslation.LOGGER.warn("Could not remove the correction: {}", e.toString());
+            }
+        });
     }
 
     /** Called when the language files were (re)loaded: the game's own Turkish names become glossary hints. */

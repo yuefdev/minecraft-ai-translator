@@ -20,6 +20,16 @@ loom {
         client {
             property 'mixin.debug', 'true' // Tells forge to have debug on for Mixins
         }
+        // Headless start-up check used by CI: boots the real game, verifies that the mixins were applied and
+        // runs the translation pipeline against a local fake provider, then writes build/smoke/result.json.
+        smokeClient {
+            client()
+            property "autotranslation.smoketest", "true"
+            property "autotranslation.smoketest.output", file("build/smoke/result.json").absolutePath
+            programArg "--username"
+            programArg "SmokeTester"
+            runDir "build/smoke-run"
+        }
     }
 }
 
@@ -46,6 +56,16 @@ dependencies {
     // The translation engine contains no Minecraft code, so it is bundled as-is.
     shadowCommon(project(path: ":core")) { transitive = false }
     implementation project(":core")
+}
+
+// -PsmokeMods puts the optional integrations on the runtime classpath of runSmokeClient.
+if (project.hasProperty("smokeMods")) {
+    dependencies {
+        modLocalRuntime("dev.ftb.mods:ftb-library-forge:${rootProject.ftb_library_version}") { transitive = false }
+        modLocalRuntime("dev.ftb.mods:ftb-teams-forge:${rootProject.ftb_teams_version}") { transitive = false }
+        modLocalRuntime("dev.ftb.mods:ftb-quests-forge:${rootProject.ftb_quests_version}") { transitive = false }
+        modLocalRuntime("vazkii.patchouli:Patchouli:${rootProject.patchouli_version.replace('-FABRIC', '-FORGE')}")
+    }
 }
 
 version = "${rootProject.mod_version}+mc${rootProject.minecraft_version}-forge"

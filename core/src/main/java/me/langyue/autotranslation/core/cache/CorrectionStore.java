@@ -66,17 +66,24 @@ public final class CorrectionStore {
         return global == null ? null : global.translation();
     }
 
-    public void put(String source, String translation, String scope) throws IOException {
+    /** Takes effect immediately; call {@link #save()} (on a background thread) to persist it. */
+    public void putInMemory(String source, String translation, String scope) {
         byKey.put(keyOf(source, scope), new Correction(source, translation, scope));
         revision++;
+    }
+
+    public void removeFromMemory(String source, String scope) {
+        if (byKey.remove(keyOf(source, scope)) != null) revision++;
+    }
+
+    public void put(String source, String translation, String scope) throws IOException {
+        putInMemory(source, translation, scope);
         save();
     }
 
     public void remove(String source, String scope) throws IOException {
-        if (byKey.remove(keyOf(source, scope)) != null) {
-            revision++;
-            save();
-        }
+        removeFromMemory(source, scope);
+        save();
     }
 
     public List<Correction> all() {
@@ -90,7 +97,7 @@ public final class CorrectionStore {
         return revision;
     }
 
-    private void save() throws IOException {
+    public synchronized void save() throws IOException {
         JsonArray array = new JsonArray();
         for (Correction c : all()) {
             JsonObject o = new JsonObject();

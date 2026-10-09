@@ -1,0 +1,82 @@
+name: Game start-up smoke test
+
+# Boots the real Minecraft 1.20.1 + Forge client headlessly (software OpenGL under Xvfb) and runs the checks in
+# me.langyue.autotranslation.smoke.SmokeTest. One run without the optional mods, one with FTB Quests and Patchouli.
+on:
+  push:
+    branches:
+      - 'claude/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [plain, with-ftbquests-patchouli]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v3
+      - name: Install headless display and software OpenGL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 libopenal1 libxrandr2 libxinerama1 libxcursor1 libxi6 libxxf86vm1 > /dev/null
+      - name: Start the game and run the checks
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_GL_VERSION_OVERRIDE: '4.5'
+          MESA_GLSL_VERSION_OVERRIDE: '450'
+        run: |
+          chmod +x gradlew
+          extra=""
+          if [ "${{ matrix.variant }}" = "with-ftbquests-patchouli" ]; then extra="-PsmokeMods=true"; fi
+          set +e
+          timeout 2400 xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew :forge:runSmokeClient $extra --no-daemon --console=plain > smoke.log 2>&1
+          code=$?
+          echo "=== gradle exit code: $code ==="
+          if [ -f forge/build/smoke/result.json ]; then
+            python3 - <<'PY'
+          import json
+          r = json.load(open("forge/build/smoke/result.json"))
+          for c in r["checks"]:
+              print(("PASS " if c["ok"] else "FAIL ") + c["name"] + (" :: " + c["detail"] if c.get("detail") else ""))
+          print("ok =", r["ok"], "| provider requests =", r["providerRequests"], "| ftbquests =", r["ftbquestsLoaded"], "| patchouli =", r["patchouliLoaded"])
+          PY
+          else
+            echo "NO RESULT FILE - the game did not reach the check phase"
+            grep -nE "Exception|ERROR|FATAL|Mixin apply|InvalidInjection|Missing|crash" smoke.log | head -n 40
+            tail -n 25 smoke.log
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json, sys
+          r = json.load(open("forge/build/smoke/result.json"))
+          want_mods = "${{ matrix.variant }}" == "with-ftbquests-patchouli"
+          bad = []
+          if not r["ok"]: bad.append("at least one check failed")
+          if r["ftbquestsLoaded"] != want_mods or r["patchouliLoaded"] != want_mods: bad.append("unexpected optional mod set")
+          if want_mods and r["providerRequests"] < 3: bad.append("pipeline sent too few requests to the fake provider")
+          if want_mods and not r["authorizationHeaderSent"]: bad.append("API key was not sent as a bearer token")
+          if bad:
+              print("SMOKE TEST FAILED:", "; ".join(bad)); sys.exit(1)
+          print("SMOKE TEST PASSED")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-${{ matrix.variant }}
+          path: |
+            smoke.log
+            forge/build/smoke/result.json
+            forge/build/smoke-run/logs/latest.log
+            forge/build/smoke-run/crash-reports
+          if-no-files-found: ignore

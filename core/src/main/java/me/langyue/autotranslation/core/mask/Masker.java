@@ -2,6 +2,7 @@ package me.langyue.autotranslation.core.mask;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -25,6 +26,8 @@ public final class Masker {
     private static final Pattern ANY_TOKEN_LIKE = Pattern.compile("\\[\\[\\s*/?\\s*[PR]\\s*\\d+\\s*]]");
     private static final Pattern DIGITS = Pattern.compile("\\d+");
     private static final Pattern LETTER = Pattern.compile("\\p{L}");
+    /** "3/10" or "12:30": the order of such pairs carries meaning (progress, ratios, times) and must not change. */
+    private static final Pattern COMPOUND_NUMBER = Pattern.compile("\\d+\\s*[/:]\\s*\\d+");
 
     private static final List<String> PREAMBLES = List.of(
             "here is the translation", "here's the translation", "sure,", "sure!", "certainly", "of course",
@@ -180,6 +183,9 @@ public final class Masker {
         if (!digitRuns(visibleSource).equals(digitRuns(visibleTarget))) {
             return RestoreResult.failure("numbers changed");
         }
+        if (!compoundNumbers(visibleSource).equals(compoundNumbers(visibleTarget))) {
+            return RestoreResult.failure("progress or ratio numbers changed");
+        }
         if (source.profile() != null && source.profile().forbiddenInVisibleText != null
                 && checkCommentary && source.profile().forbiddenInVisibleText.matcher(visibleTarget).find()
                 && !source.profile().forbiddenInVisibleText.matcher(visibleSource).find()) {
@@ -310,6 +316,14 @@ public final class Masker {
         String[] array = runs.toArray(new String[0]);
         Arrays.sort(array);
         return Arrays.asList(array);
+    }
+
+    private static List<String> compoundNumbers(String text) {
+        List<String> found = new ArrayList<>();
+        Matcher m = COMPOUND_NUMBER.matcher(text);
+        while (m.find()) found.add(m.group().replaceAll("\\s+", ""));
+        Collections.sort(found);
+        return found;
     }
 
     private static int count(String text, char c) {
