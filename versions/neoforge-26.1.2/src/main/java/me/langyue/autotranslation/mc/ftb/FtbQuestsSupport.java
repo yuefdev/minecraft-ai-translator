@@ -1,7 +1,6 @@
 package me.langyue.autotranslation.mc.ftb;
 
 import me.langyue.autotranslation.mc.Texts;
-import dev.ftb.mods.ftblibrary.ui.ScreenWrapper;
 import dev.ftb.mods.ftbquests.client.ClientQuestFile;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
 import dev.ftb.mods.ftbquests.quest.Chapter;
@@ -38,7 +37,7 @@ public final class FtbQuestsSupport {
         if (engine == null || !engine.questsEnabled()) return false;
         if (engine.settings().pauseWhileEditingQuests) {
             try {
-                if (ClientQuestFile.exists() && ClientQuestFile.INSTANCE.canEdit()) return false;
+                if (ClientQuestFile.exists() && ClientQuestFile.getInstance().canEdit()) return false;
             } catch (Throwable ignored) {
                 // never let a context check break the quest screen
             }
@@ -70,7 +69,7 @@ public final class FtbQuestsSupport {
         List<Component> result = new ArrayList<Component>(snapshot.size());
         for (int i = 0; i < snapshot.size(); i++) {
             String line = translated.get(i);
-            result.add(line.equals(snapshot.get(i)) ? TextUtils.parseRawText(line, quest.holderLookup()) : build(engine, quest, line, snapshot.get(i)));
+            result.add(line.equals(snapshot.get(i)) ? TextUtils.parseRawText(line, lookup(quest)) : build(engine, quest, line, snapshot.get(i)));
         }
         return java.util.Collections.unmodifiableList(result);
     }
@@ -87,12 +86,21 @@ public final class FtbQuestsSupport {
 
     private static Component build(Engine engine, QuestObjectBase object, String translated, String raw) {
         if (translated == null) return null;
-        Component component = TextUtils.parseRawText(translated, object.holderLookup());
+        Component component = TextUtils.parseRawText(translated, lookup(object));
         if (engine.showOriginal()) {
             component = component.copy().append(Texts.literal(" (" + TextSupport.plainFtb(raw) + ")")
                     .withStyle(ChatFormatting.GRAY));
         }
         return component;
+    }
+
+    /** The registry lookup FTB Quests uses; outside a world (no client level yet) the vanilla registries serve as well. */
+    static net.minecraft.core.HolderLookup.Provider lookup(QuestObjectBase object) {
+        try {
+            return object.holderLookup();
+        } catch (RuntimeException e) {
+            return net.minecraft.data.registries.VanillaRegistries.createLookup();
+        }
     }
 
     private static String describe(QuestObjectBase object) {
@@ -140,8 +148,19 @@ public final class FtbQuestsSupport {
 
     public static void refreshOpenScreen() {
         Object screen = Minecraft.getInstance().screen;
-        if (screen instanceof ScreenWrapper && ((ScreenWrapper) screen).getGui() instanceof QuestScreen) {
-            QuestScreen questScreen = (QuestScreen) ((ScreenWrapper) screen).getGui();
+        QuestScreen questScreen = null;
+        if (screen instanceof QuestScreen) {
+            questScreen = (QuestScreen) screen;
+        } else if (screen != null) {
+            try {
+                // older layouts wrap the FTB gui in a vanilla screen that hands it out through getGui()
+                Object gui = screen.getClass().getMethod("getGui").invoke(screen);
+                if (gui instanceof QuestScreen) questScreen = (QuestScreen) gui;
+            } catch (ReflectiveOperationException | RuntimeException ignored) {
+                // not an FTB screen
+            }
+        }
+        if (questScreen != null) {
             questScreen.refreshChapterPanel();
             questScreen.refreshQuestPanel();
             if (questScreen.isViewingQuest()) questScreen.refreshViewQuestPanel();

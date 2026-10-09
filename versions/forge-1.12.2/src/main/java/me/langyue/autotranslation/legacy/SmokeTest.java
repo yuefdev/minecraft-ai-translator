@@ -92,6 +92,7 @@ public final class SmokeTest {
                 () -> "TR| Hello brave miner".equals(Engine.get().translate("Hello brave miner", content, MaskProfile.PLAIN)), 600,
                 () -> "no translation; last error: " + Engine.get().service().stats().lastError());
 
+        generic(minecraft);
         betterQuesting(engine);
         ftbQuests(engine);
         patchouli(engine);
@@ -109,6 +110,32 @@ public final class SmokeTest {
             REPORT.check(modId + ": absent, game started and hooks skipped", none, "");
         }
         return loaded && present;
+    }
+
+    private static final String SAMPLE_KEY = "autotranslation.smoke.sample";
+    private static final String SAMPLE_LITERAL = "Welcome back, brave explorer of the deep caves";
+
+    /**
+     * The part that matters for "translate every mod": nothing here knows BetterQuesting, FTB Quests or Patchouli.
+     * Text from the language file of a mod and hard-coded text on the screen of another mod must end up translated.
+     */
+    private static void generic(final Minecraft minecraft) {
+        REPORT.waitFor("generic: language-file text of any mod is translated (I18n.format)",
+                () -> net.minecraft.client.resources.I18n.format(SAMPLE_KEY).startsWith("TR| Open the chest"), 900,
+                () -> "I18n.format -> " + net.minecraft.client.resources.I18n.format(SAMPLE_KEY)
+                        + " | last error: " + Engine.get().service().stats().lastError());
+        REPORT.waitFor("generic: hard-coded English text on another mod's screen is translated by itself",
+                () -> {
+                    if (!(minecraft.currentScreen instanceof smoketest.OtherModScreen)) {
+                        minecraft.displayGuiScreen(new smoketest.OtherModScreen());
+                        return false;
+                    }
+                    java.util.List<String> lines = minecraft.fontRenderer.listFormattedStringToWidth(SAMPLE_LITERAL, 100000);
+                    return !lines.isEmpty() && lines.get(0).startsWith("TR| Welcome back");
+                }, 900,
+                () -> "screen=" + minecraft.currentScreen + " lines="
+                        + minecraft.fontRenderer.listFormattedStringToWidth(SAMPLE_LITERAL, 100000)
+                        + " | last error: " + Engine.get().service().stats().lastError());
     }
 
     private static void betterQuesting(Engine engine) {

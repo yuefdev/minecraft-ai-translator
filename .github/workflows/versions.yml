@@ -163,8 +163,10 @@ jobs:
           echo "##### SMOKE SUMMARY ${{ matrix.module }} / ${{ matrix.variant }}"
           if [ ! -f $MODULE/build/smoke/result.json ]; then
             echo "NO RESULT FILE - the game did not reach the check phase"
-            grep -nE "error:|Exception|ERROR|FATAL|FAILED|What went wrong|Mixin apply|InvalidInjection|Missing or unsupported|crash|Could not" smoke.log | head -n 30 | cut -c1-240
-            echo "--- last lines"; tail -n 8 smoke.log | cut -c1-240
+            grep -nE "error:|FAILED|What went wrong|Mixin apply|InvalidInjection|Missing or unsupported|Could not" smoke.log | head -n 12 | cut -c1-240
+            echo "--- first failure and its causes"
+            grep -nE "FATAL|ExceptionInInitializerError|ReportedException|Caused by:|Description:|UnsatisfiedLink|LinkageError|NoSuchMethod|NoClassDef|ClassNotFound|Mixin|IllegalState" smoke.log | grep -v "ALSA\|AL lib" | head -n 24 | cut -c1-260
+            echo "--- last lines"; tail -n 6 smoke.log | cut -c1-240
             exit 1
           fi
           python3 - <<'PY'

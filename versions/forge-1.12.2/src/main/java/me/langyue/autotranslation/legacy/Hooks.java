@@ -72,6 +72,52 @@ public final class Hooks {
         return engine.showOriginal() ? translated + " §7(" + original.replace('§', '&') + ")" : translated;
     }
 
+    // ------------------------------------------------------------------------------ every mod, generic
+
+    private static final Content LANGUAGE = new Content("game", "language file", "lang", "");
+    private static final Content INTERFACE = new Content("game", "interface text", "ui", "");
+    private static final java.util.concurrent.ConcurrentHashMap<String, String> FONT_CACHE =
+            new java.util.concurrent.ConcurrentHashMap<String, String>();
+    private static volatile long fontGeneration = -1L;
+
+    /** Language-file text of any mod: whatever a key resolved to; English prose is translated in the background. */
+    public static String langValue(String key, String value) {
+        try {
+            Engine engine = Engine.get();
+            if (key == null || value == null || value.equals(key) || value.length() < 2 || engine == null || !engine.genericEnabled()) {
+                return value;
+            }
+            String translated = engine.translateLegacy(key, value, null);
+            return translated == null ? value : translated;
+        } catch (Throwable t) {
+            return value;
+        }
+    }
+
+    /** Hard-coded text that is about to be drawn, measured or wrapped (only while a suitable screen is open). */
+    public static String fontText(String text) {
+        try {
+            Engine engine = Engine.get();
+            if (text == null || text.length() < 2 || engine == null || !engine.genericEnabled() || !GenericGate.screenAllowed()) {
+                return text;
+            }
+            long generation = engine.generation();
+            if (generation != fontGeneration || FONT_CACHE.size() > 60000) {
+                FONT_CACHE.clear();
+                fontGeneration = generation;
+            }
+            String cached = FONT_CACHE.get(text);
+            if (cached == null) {
+                String translated = engine.translate(text, INTERFACE, MaskProfile.PLAIN);
+                cached = translated == null ? "" : translated;
+                FONT_CACHE.put(text, cached);
+            }
+            return cached.isEmpty() ? text : cached;
+        } catch (Throwable t) {
+            return text;
+        }
+    }
+
     /** "item.foo.name", "betterquesting.gui.name": dotted identifiers without spaces are keys, not prose. */
     private static boolean looksLikeKey(String text) {
         return text.indexOf(' ') < 0 && text.indexOf('.') > 0 && text.indexOf('\n') < 0;

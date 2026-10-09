@@ -5,6 +5,8 @@
   "compatibilityLevel": "JAVA_8",
   "mixins": [],
   "client": [
+    "generic.ClientLanguageMixin",
+    "generic.TextComponentMixin",
     "ftb.ChapterButtonMixin",
     "ftb.QuestMixin",
     "ftb.QuestObjectBaseMixin",

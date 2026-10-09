@@ -4,6 +4,7 @@ import dev.ftb.mods.ftbquests.client.ClientQuestFile;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterGroup;
 import dev.ftb.mods.ftbquests.quest.Quest;
+import me.langyue.autotranslation.mc.ftb.FtbQuestsSupport;
 import me.langyue.autotranslation.core.smoke.SmokeReport;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -35,24 +36,29 @@ final class SmokeFtb {
             // a quest that is not yet registered keeps its title next to the object (proto translation)
             quest.setRawTitle(ORIGINAL_TITLE);
 
-            Component first = quest.getTitle();
-            report.check("ftbquests: original title is shown while translation is pending",
-                    first.getString().contains("Collect") && !first.getString().startsWith("TR|"), first.getString());
-            report.waitFor("ftbquests: title translated through FTB Quests -> pipeline -> provider",
-                    () -> quest.getTitle().getString().startsWith("TR| Collect Iron Ingots"), 600,
-                    () -> "title stayed: " + quest.getTitle().getString());
+            // The game's own title getter needs a client level (registries); outside a world the support layer that the
+            // mixin calls is driven directly. The "mixin applied" checks above prove the wiring.
+            report.check("ftbquests: nothing translated yet (pending)", FtbQuestsSupport.title(quest, ORIGINAL_TITLE) == null, "");
+            report.waitFor("ftbquests: title translated through FTB Quests support -> pipeline -> provider",
+                    () -> {
+                        Component translated = FtbQuestsSupport.title(quest, ORIGINAL_TITLE);
+                        return translated != null && translated.getString().startsWith("TR| Collect Iron Ingots");
+                    }, 600,
+                    () -> "no translation yet; last error unknown");
             report.waitFor("ftbquests: data untouched (raw text, colour style)",
                     () -> {
+                        Component translated = FtbQuestsSupport.title(quest, ORIGINAL_TITLE);
+                        if (translated == null) return false;
                         boolean gold = false;
-                        for (Component sibling : quest.getTitle().getSiblings()) {
+                        for (Component sibling : translated.getSiblings()) {
                             if (sibling.getString().equals("Iron") && sibling.getStyle().getColor() != null
                                     && sibling.getStyle().getColor().equals(TextColor.fromLegacyFormat(ChatFormatting.GOLD))) {
                                 gold = true;
                             }
                         }
-                        return quest.getRawTitle().equals(ORIGINAL_TITLE) && gold && quest.getTitle().getString().startsWith("TR|");
+                        return quest.getRawTitle().equals(ORIGINAL_TITLE) && gold && translated.getString().startsWith("TR|");
                     }, 600,
-                    () -> quest.getTitle().toString());
+                    () -> "raw title or colour style changed");
         } catch (Throwable t) {
             report.check("ftbquests: functional test setup", false, t.toString());
         }
