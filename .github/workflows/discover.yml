@@ -210,16 +210,16 @@ jobs:
           mkdir -p jars && cd jars
           for a in ftb-quests-neoforge:26.1.2.9 ftb-quests:26.1.2.9 ftb-library-neoforge:26.1.2.9 ftb-library:26.1.2.9 ftb-teams-neoforge:26.1.2.4 ftb-teams:26.1.2.4; do
             n=${a%%:*}; v=${a##*:}
-            curl -fsSL --max-time 90 $F/$n/$v/$n-$v.jar -o $n.jar && echo "downloaded $n ($(stat -c %s $n.jar) bytes, $(unzip -l $n.jar | grep -c '\.class') classes)" || echo "no jar for $n"
+            curl -fsSL --max-time 90 $F/$n/$v/$n-$v.jar -o $n.jar || echo "no jar for $n"
           done
           CP=$(ls *.jar | tr '\n' ':')
-          echo "=== where are ScreenWrapper / BaseScreen / TextUtils / QuestScreen"
-          for j in *.jar; do unzip -l $j | awk '{print $4}' | grep -E "(ScreenWrapper|/BaseScreen|/TextUtils|/QuestScreen|ClientQuestFile|ChapterPanel\\$ChapterButton)\.class" | sed "s|^|$j: |"; done
-          jp() { javap -p -cp "$CP" "$1" 2>&1 | grep -E "$2" | head -n ${3:-14}; }
-          echo "=== ClientQuestFile"; jp dev.ftb.mods.ftbquests.client.ClientQuestFile "INSTANCE|getInstance|exists|canEdit|static" 12
-          echo "=== QuestObjectBase"; jp dev.ftb.mods.ftbquests.quest.QuestObjectBase "getTitle|getRawTitle|holderLookup|getCodeString|getObjectType|getQuestChapter" 10
-          echo "=== Quest"; jp dev.ftb.mods.ftbquests.quest.Quest "getSubtitle|getDescription|getRawSubtitle|getRawDescription" 10
-          echo "=== Chapter"; jp dev.ftb.mods.ftbquests.quest.Chapter "getRawSubtitle|getSubtitle" 6
-          echo "=== ChapterButton"; jp 'dev.ftb.mods.ftbquests.client.gui.quests.ChapterPanel$ChapterButton' "ChapterButton|getRawSubtitle" 6
-          echo "=== QuestScreen refresh"; jp dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen "refresh|isViewingQuest" 8
-          echo "=== TextUtils"; jp dev.ftb.mods.ftbquests.util.TextUtils "parseRawText" 4
+          echo "=== classes named ScreenWrapper / BaseScreen / QuestScreen"
+          for j in *.jar; do unzip -l $j | awk '{print $4}' | grep -E 'ScreenWrapper|/BaseScreen|/QuestScreen' | sed "s|^|$j: |"; done
+          echo "=== QuestScreen declaration"
+          javap -p -cp "$CP" dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen | head -n 3
+          echo "=== super chain"
+          javap -p -cp "$CP" dev.ftb.mods.ftblibrary.client.gui.screen.BaseScreen 2>&1 | head -n 3
+          echo "=== Panel refreshWidgets"
+          javap -p -cp "$CP" dev.ftb.mods.ftblibrary.client.gui.widget.Panel 2>&1 | grep -E "refreshWidgets|class " | head -n 3
+          echo "=== Minecraft screen class that wraps FTB guis"
+          unzip -l ftb-library.jar | awk '{print $4}' | grep -iE "screen" | head -n 20
