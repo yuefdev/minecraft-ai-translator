@@ -274,4 +274,32 @@ class ProviderTest {
         ProviderException e = new ProviderException(ProviderException.Kind.AUTH, "denied for " + KEY);
         assertFalse(e.getMessage().contains(KEY));
     }
+
+    @Test
+    void modelsThatRefuseTemperatureAndMaxTokensAreSpokenToWithoutThem() throws Exception {
+        handler.set((ex, body) -> {
+            if (body.contains("\"temperature\"")) {
+                reply(ex, 400, "{\"error\":{\"message\":\"Unsupported value: 'temperature' does not support 0.2 with this model.\"}}");
+            } else if (body.contains("\"max_tokens\"")) {
+                reply(ex, 400, "{\"error\":{\"message\":\"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\"}}");
+            } else {
+                reply(ex, 200, completion("{\"translations\":[\"Merhaba\"]}"));
+            }
+        });
+        OpenAiCompatibleProvider provider = new OpenAiCompatibleProvider(() -> settings(3_000));
+        assertEquals(List.of("Merhaba"), provider.translate(request("Hello")));
+        String last = bodies.get(bodies.size() - 1);
+        assertFalse(last.contains("\"temperature\""));
+        assertFalse(last.contains("\"max_tokens\""));
+        assertTrue(last.contains("\"max_completion_tokens\""), last);
+    }
+
+    @Test
+    void parameterNegotiationIsBoundedWhenTheServerKeepsRefusing() {
+        handler.set((ex, body) -> reply(ex, 400, "{\"error\":\"bad temperature, bad max_tokens, bad response_format, bad max_completion_tokens\"}"));
+        OpenAiCompatibleProvider provider = new OpenAiCompatibleProvider(() -> settings(3_000));
+        ProviderException e = assertThrows(ProviderException.class, () -> provider.translate(request("Hello")));
+        assertEquals(ProviderException.Kind.BAD_REQUEST, e.kind());
+        assertTrue(bodies.size() <= 6, "made " + bodies.size() + " requests");
+    }
 }

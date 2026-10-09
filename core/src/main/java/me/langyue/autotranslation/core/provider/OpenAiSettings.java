@@ -41,8 +41,10 @@ public record OpenAiSettings(
     /** Host used to identify the provider in cache keys (never contains credentials or paths). */
     public String host() {
         try {
-            String host = java.net.URI.create(endpoint()).getHost();
-            return host == null ? "unknown" : host;
+            java.net.URI uri = java.net.URI.create(endpoint());
+            String host = uri.getHost();
+            if (host == null) return "unknown";
+            return uri.getPort() == -1 ? host : host + ":" + uri.getPort();
         } catch (IllegalArgumentException e) {
             return "invalid";
         }
@@ -52,7 +54,8 @@ public record OpenAiSettings(
         if (baseUrl == null || baseUrl.isBlank() || model == null || model.isBlank()) return false;
         String lower = baseUrl.toLowerCase(java.util.Locale.ROOT);
         if (!lower.startsWith("http://") && !lower.startsWith("https://")) return false;
-        boolean local = host().equals("localhost") || host().equals("127.0.0.1") || host().equals("[::1]");
+        String bareHost = host().replaceFirst(":\\d+$", "");
+        boolean local = bareHost.equals("localhost") || bareHost.equals("127.0.0.1") || bareHost.equals("[::1]");
         // hosted services need a key; local servers (Ollama, LM Studio) usually do not
         return local || !apiKey.isEmpty();
     }

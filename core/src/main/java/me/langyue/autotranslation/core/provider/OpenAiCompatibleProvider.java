@@ -34,8 +34,11 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
     private static final Pattern FENCE = Pattern.compile("(?s)^\\s*```[a-zA-Z]*\\s*(.*?)\\s*```\\s*$");
     private static final int MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 
+    /** Request parameters that models/servers have refused so far; they are left out from then on. */
+    private static final List<String> NEGOTIABLE_PARAMETERS = List.of("response_format", "temperature", "max_tokens", "max_completion_tokens");
+
     private final Supplier<OpenAiSettings> settings;
-    private volatile boolean jsonModeRejected = false;
+    private final java.util.Set<String> unsupported = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public OpenAiCompatibleProvider(Supplier<OpenAiSettings> settings) {
         this.settings = settings;
@@ -63,23 +66,23 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
             throw new ProviderException(ProviderException.Kind.NOT_CONFIGURED,
                     "Translation provider is not configured (endpoint, model or API key missing)");
         }
-        boolean useJsonMode = s.jsonResponseFormat() && !jsonModeRejected;
-        try {
-            return callOnce(s, request, useJsonMode);
-        } catch (JsonModeRejected e) {
-            jsonModeRejected = true;
-            CoreLog.info("The endpoint rejected response_format; continuing without it");
+        // Some models refuse optional parameters (temperature, response_format, max_tokens...). Learn which ones
+        // and retry immediately without them; bounded, so a misbehaving server cannot cause a loop.
+        for (int attempt = 0; ; attempt++) {
             try {
-                return callOnce(s, request, false);
-            } catch (JsonModeRejected again) {
-                throw new ProviderException(ProviderException.Kind.BAD_REQUEST, again.getMessage());
+                return callOnce(s, request);
+            } catch (ParameterRejected e) {
+                if (attempt >= NEGOTIABLE_PARAMETERS.size() || !unsupported.add(e.parameter)) {
+                    throw new ProviderException(ProviderException.Kind.BAD_REQUEST, e.getMessage());
+                }
+                CoreLog.info("The endpoint rejected the parameter '" + e.parameter + "'; continuing without it");
             }
         }
     }
 
-    private List<String> callOnce(OpenAiSettings s, ProviderRequest request, boolean jsonMode)
-            throws ProviderException, JsonModeRejected {
-        byte[] body = buildBody(s, request, jsonMode).getBytes(StandardCharsets.UTF_8);
+    private List<String> callOnce(OpenAiSettings s, ProviderRequest request)
+            throws ProviderException, ParameterRejected {
+        byte[] body = buildBody(s, request, unsupported).getBytes(StandardCharsets.UTF_8);
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL(s.endpoint()).openConnection();
@@ -101,7 +104,7 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
             int status = connection.getResponseCode();
             if (status >= 300) {
                 String errorBody = readBody(connection.getErrorStream());
-                throw statusFailure(status, errorBody, connection.getHeaderField("Retry-After"), jsonMode);
+                throw statusFailure(status, errorBody, connection.getHeaderField("Retry-After"));
             }
             return parseResponse(readBody(connection.getInputStream()), request.segments().size());
         } catch (SocketTimeoutException e) {
@@ -117,8 +120,8 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
         }
     }
 
-    private ProviderException statusFailure(int status, String errorBody, String retryAfter, boolean jsonMode)
-            throws JsonModeRejected {
+    private ProviderException statusFailure(int status, String errorBody, String retryAfter)
+            throws ParameterRejected {
         String snippet = errorBody == null ? "" : errorBody.replaceAll("\\s+", " ");
         if (snippet.length() > 200) snippet = snippet.substring(0, 200) + "...";
         String detail = "HTTP " + status + (snippet.isEmpty() ? "" : ": " + snippet);
@@ -136,8 +139,13 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
             return new ProviderException(ProviderException.Kind.SERVER, "Server error (" + detail + ")",
                     parseRetryAfter(retryAfter));
         }
-        if (status == 400 && jsonMode && snippet.toLowerCase().contains("response_format")) {
-            throw new JsonModeRejected(detail);
+        if (status == 400) {
+            String lower = snippet.toLowerCase();
+            for (String parameter : NEGOTIABLE_PARAMETERS) {
+                if (lower.contains(parameter) && !unsupported.contains(parameter)) {
+                    throw new ParameterRejected(parameter, detail);
+                }
+            }
         }
         return new ProviderException(ProviderException.Kind.BAD_REQUEST, "Request rejected (" + detail + ")");
     }
@@ -151,12 +159,15 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
         }
     }
 
-    static String buildBody(OpenAiSettings s, ProviderRequest request, boolean jsonMode) {
+    static String buildBody(OpenAiSettings s, ProviderRequest request, java.util.Set<String> unsupported) {
         JsonObject root = new JsonObject();
         root.addProperty("model", s.model());
-        root.addProperty("temperature", s.temperature());
-        if (s.maxOutputTokens() > 0) root.addProperty("max_tokens", s.maxOutputTokens());
-        if (jsonMode) {
+        if (!unsupported.contains("temperature")) root.addProperty("temperature", s.temperature());
+        if (s.maxOutputTokens() > 0) {
+            if (!unsupported.contains("max_tokens")) root.addProperty("max_tokens", s.maxOutputTokens());
+            else if (!unsupported.contains("max_completion_tokens")) root.addProperty("max_completion_tokens", s.maxOutputTokens());
+        }
+        if (s.jsonResponseFormat() && !unsupported.contains("response_format")) {
             JsonObject format = new JsonObject();
             format.addProperty("type", "json_object");
             root.add("response_format", format);
@@ -247,10 +258,13 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
         }
     }
 
-    /** Internal signal: the endpoint does not support response_format, retry without it. */
-    private static final class JsonModeRejected extends Exception {
-        JsonModeRejected(String message) {
+    /** Internal signal: the endpoint refused an optional request parameter; retry without it. */
+    private static final class ParameterRejected extends Exception {
+        final String parameter;
+
+        ParameterRejected(String parameter, String message) {
             super(message, null, false, false);
+            this.parameter = parameter;
         }
     }
 }
