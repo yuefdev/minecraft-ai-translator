@@ -166,7 +166,9 @@ jobs:
             grep -nE "error:|FAILED|What went wrong|Mixin apply|InvalidInjection|Missing or unsupported|Could not" smoke.log | head -n 12 | cut -c1-240
             echo "--- first failure and its causes"
             grep -nE "FATAL|ExceptionInInitializerError|ReportedException|Caused by:|Description:|UnsatisfiedLink|LinkageError|NoSuchMethod|NoClassDef|ClassNotFound|Mixin|IllegalState" smoke.log | grep -v "ALSA\|AL lib" | head -n 24 | cut -c1-260
-            echo "--- last lines"; tail -n 6 smoke.log | cut -c1-240
+            echo "--- stack of the first exception"
+            awk '/ExceptionInInitializerError|ReportedException|Exception in thread|java.lang.RuntimeException/{f=1} f{print; if(++n>22) exit}' smoke.log | grep -v "ALSA\|AL lib" | cut -c1-200
+            echo "--- last lines"; tail -n 4 smoke.log | cut -c1-240
             exit 1
           fi
           python3 - <<'PY'

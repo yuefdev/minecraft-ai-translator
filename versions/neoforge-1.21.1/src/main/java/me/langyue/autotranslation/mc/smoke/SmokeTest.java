@@ -115,6 +115,8 @@ public final class SmokeTest {
                         + " | last error: " + Engine.get().service().stats().lastError());
         REPORT.waitFor("generic: hard-coded English text on another mod's screen is translated by itself",
                 () -> {
+                    // last of all: while an ordinary screen is open every other check would see doubly translated text
+                    if (REPORT.pendingCount() > 1) return false;
                     if (!(minecraft.screen instanceof smoketest.OtherModScreen)) {
                         minecraft.setScreen(new smoketest.OtherModScreen());
                         return false;

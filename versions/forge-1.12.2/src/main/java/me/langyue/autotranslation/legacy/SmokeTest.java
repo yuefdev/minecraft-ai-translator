@@ -126,6 +126,7 @@ public final class SmokeTest {
                         + " | last error: " + Engine.get().service().stats().lastError());
         REPORT.waitFor("generic: hard-coded English text on another mod's screen is translated by itself",
                 () -> {
+                    if (REPORT.pendingCount() > 1) return false; // last of all
                     if (!(minecraft.currentScreen instanceof smoketest.OtherModScreen)) {
                         minecraft.displayGuiScreen(new smoketest.OtherModScreen());
                         return false;

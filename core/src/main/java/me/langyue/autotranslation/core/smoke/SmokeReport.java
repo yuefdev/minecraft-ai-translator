@@ -78,6 +78,11 @@ public final class SmokeReport {
         return pending.isEmpty();
     }
 
+    /** How many polled checks are still waiting (a check that must run last can wait until this is 1). */
+    public synchronized int pendingCount() {
+        return pending.size();
+    }
+
     public synchronized boolean allOk() {
         for (JsonObject c : checks) {
             if (!c.get("ok").getAsBoolean()) return false;
