@@ -175,3 +175,18 @@ jobs:
           curl -fsSL --max-time 40 https://maven.blamejared.com/vazkii/patchouli/Patchouli/maven-metadata.xml -o m.xml && grep -oE "<version>1\.0[^<]*</version>" m.xml | sed -E 's/<[^>]+>//g' | tail -n 4 | tr '\n' ' '; echo
           echo "-- gradle wrapper versions on services.gradle.org (current)"
           curl -fsSL --max-time 30 https://services.gradle.org/versions/current | python3 -c "import json,sys; print(json.load(sys.stdin)['version'])"
+      - name: CFWidget details (ids and newest 1.12.2 files)
+        run: |
+          for p in minecraft/mc-mods/better-questing minecraft/mc-mods/ftb-quests minecraft/mc-mods/ftblib minecraft/mc-mods/item-filters minecraft/mc-mods/itemfilters minecraft/mc-mods/patchouli; do
+            echo "-- $p"
+            curl -fsSL --max-time 40 "https://api.cfwidget.com/$p" -o w.json 2>/dev/null && python3 - <<'PY'
+          import json
+          w = json.load(open("w.json"))
+          print("project id", w.get("id"), "|", w.get("title"), "| urls", w.get("urls", {}).get("curseforge"))
+          fs = [f for f in w.get("files", []) if "1.12.2" in f.get("versions", [])]
+          fs.sort(key=lambda f: f.get("uploaded_at", ""))
+          for f in fs[-3:]:
+              print("  file", f["id"], f["name"], f.get("uploaded_at"), f.get("type"))
+          PY
+            echo
+          done
