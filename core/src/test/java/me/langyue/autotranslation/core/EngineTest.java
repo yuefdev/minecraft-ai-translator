@@ -165,6 +165,19 @@ class EngineTest {
     }
 
     @Test
+    void changingTheGameLanguageIsNoticedByTick() throws Exception {
+        Engine e = newEngine();
+        e.tick(); // remembers the current language
+        long before = e.generation();
+        e.tick();
+        assertEquals(before, e.generation(), "no change, no rebuild");
+        language = "en_us";
+        e.tick();
+        assertTrue(e.generation() > before, "a language change makes displays rebuild");
+        assertNull(e.translate("Collect iron ingots", content("q:9"), MaskProfile.FTB_RICH), "source language: nothing to translate");
+    }
+
+    @Test
     void descriptionLinesKeepTheirCountAndPageBreaks() throws Exception {
         Engine e = newEngine();
         List<String> lines = List.of("Mine some iron ore.", "{@pagebreak}", "Bring 25 ingots back.");
