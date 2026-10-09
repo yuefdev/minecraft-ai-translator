@@ -6,6 +6,8 @@ on:
       - 'claude/**'
     paths-ignore:
       - '.github/workflows/discover.yml'
+      - '.github/workflows/versions.yml'
+      - 'versions/**'
       - 'docs/**'
       - '**.md'
   workflow_dispatch:
