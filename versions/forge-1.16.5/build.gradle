@@ -71,7 +71,7 @@ dependencies {
 if (project.hasProperty("smokeMods")) {
     dependencies {
         // FTB Quests / Library require Architectury API when they run
-        modLocalRuntime("dev.architectury:architectury-forge:${architectury_version}")
+        modLocalRuntime("me.shedaniel:architectury-forge:${architectury_version}")
         modLocalRuntime("dev.ftb.mods:ftb-library-forge:${ftb_library_version}") { transitive = false }
         modLocalRuntime("dev.ftb.mods:ftb-teams-forge:${ftb_teams_version}") { transitive = false }
         modLocalRuntime("dev.ftb.mods:ftb-quests-forge:${ftb_quests_version}") { transitive = false }
