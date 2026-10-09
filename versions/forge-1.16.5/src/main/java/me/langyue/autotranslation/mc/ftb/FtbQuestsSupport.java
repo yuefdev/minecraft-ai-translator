@@ -9,7 +9,7 @@ import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
 import dev.ftb.mods.ftbquests.quest.reward.Reward;
 import dev.ftb.mods.ftbquests.quest.task.Task;
-import dev.ftb.mods.ftbquests.util.TextUtils;
+import dev.ftb.mods.ftblibrary.util.ClientTextComponentUtils;
 import me.langyue.autotranslation.core.mask.MaskProfile;
 import me.langyue.autotranslation.core.service.Types.Content;
 import me.langyue.autotranslation.engine.Engine;
@@ -70,7 +70,7 @@ public final class FtbQuestsSupport {
         Component[] result = new Component[snapshot.size()];
         for (int i = 0; i < result.length; i++) {
             String line = translated.get(i);
-            result[i] = line.equals(snapshot.get(i)) ? TextUtils.parseRawText(line) : build(engine, line, snapshot.get(i));
+            result[i] = line.equals(snapshot.get(i)) ? ClientTextComponentUtils.parse(line) : build(engine, line, snapshot.get(i));
         }
         return result;
     }
@@ -87,7 +87,7 @@ public final class FtbQuestsSupport {
 
     private static Component build(Engine engine, String translated, String raw) {
         if (translated == null) return null;
-        Component component = TextUtils.parseRawText(translated);
+        Component component = ClientTextComponentUtils.parse(translated);
         if (engine.showOriginal()) {
             component = component.copy().append(Texts.literal(" (" + TextSupport.plainFtb(raw) + ")")
                     .withStyle(ChatFormatting.GRAY));

@@ -70,7 +70,7 @@ public final class FtbQuestsSupport {
         List<Component> result = new ArrayList<Component>(snapshot.size());
         for (int i = 0; i < snapshot.size(); i++) {
             String line = translated.get(i);
-            result.add(line.equals(snapshot.get(i)) ? TextUtils.parseRawText(line, quest.holderLookup()) : build(engine, quest, line, snapshot.get(i)));
+            result.add(line.equals(snapshot.get(i)) ? TextUtils.parseRawText(line, lookup(quest)) : build(engine, quest, line, snapshot.get(i)));
         }
         return java.util.Collections.unmodifiableList(result);
     }
@@ -87,12 +87,21 @@ public final class FtbQuestsSupport {
 
     private static Component build(Engine engine, QuestObjectBase object, String translated, String raw) {
         if (translated == null) return null;
-        Component component = TextUtils.parseRawText(translated, object.holderLookup());
+        Component component = TextUtils.parseRawText(translated, lookup(object));
         if (engine.showOriginal()) {
             component = component.copy().append(Texts.literal(" (" + TextSupport.plainFtb(raw) + ")")
                     .withStyle(ChatFormatting.GRAY));
         }
         return component;
+    }
+
+    /** The registry lookup FTB Quests uses; outside a world (no client level yet) the vanilla registries serve as well. */
+    static net.minecraft.core.HolderLookup.Provider lookup(QuestObjectBase object) {
+        try {
+            return object.holderLookup();
+        } catch (RuntimeException e) {
+            return net.minecraft.data.registries.VanillaRegistries.createLookup();
+        }
     }
 
     private static String describe(QuestObjectBase object) {
