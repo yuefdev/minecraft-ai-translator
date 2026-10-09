@@ -163,3 +163,15 @@ jobs:
             code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 https://api.github.com/repos/$repo)
             echo "$code $repo"
           done
+      - name: RetroFuturaGradle and 1.12.2 toolchain
+        run: |
+          for u in \
+            https://nexus.gtnewhorizons.com/repository/public/com/gtnewhorizons/retrofuturagradle/com.gtnewhorizons.retrofuturagradle.gradle.plugin/maven-metadata.xml \
+            https://nexus.gtnewhorizons.com/repository/public/com/gtnewhorizons/retrofuturagradle/maven-metadata.xml \
+            https://maven.cleanroommc.com/zone/rong/mixinbooter/maven-metadata.xml ; do
+            echo "-- $u"; curl -fsSL --max-time 40 "$u" -o m.xml && grep -oE "<version>[^<]+</version>" m.xml | sed -E 's/<[^>]+>//g' | sort -V | tail -n 6 | tr '\n' ' ' || echo "(not found)"; echo
+          done
+          echo "-- blamejared Patchouli 1.0-*"
+          curl -fsSL --max-time 40 https://maven.blamejared.com/vazkii/patchouli/Patchouli/maven-metadata.xml -o m.xml && grep -oE "<version>1\.0[^<]*</version>" m.xml | sed -E 's/<[^>]+>//g' | tail -n 4 | tr '\n' ' '; echo
+          echo "-- gradle wrapper versions on services.gradle.org (current)"
+          curl -fsSL --max-time 30 https://services.gradle.org/versions/current | python3 -c "import json,sys; print(json.load(sys.stdin)['version'])"
