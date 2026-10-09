@@ -9,13 +9,13 @@ import java.util.List;
  * FTB Quests part of the start-up check. Kept in its own class so that it is only loaded when the mod is installed (the JVM verifier would otherwise
  * try to load the optional mod's classes while verifying {@link SmokeTest}).
  */
-final class SmokeTestFtb {
+public final class SmokeTestFtb {
     private static final String ORIGINAL_TITLE = "Collect &6Iron&r Ingots";
 
     private SmokeTestFtb() {
     }
 
-    static void run() {
+    public static void run() {
         me.langyue.autotranslation.smoke.SmokeTest.expectField("dev.ftb.mods.ftbquests.quest.QuestObjectBase", "at$title", "ftbquests: QuestObjectBase mixin applied");
         me.langyue.autotranslation.smoke.SmokeTest.expectField("dev.ftb.mods.ftbquests.quest.Quest", "at$description", "ftbquests: Quest mixin applied");
         me.langyue.autotranslation.smoke.SmokeTest.expectMethod("dev.ftb.mods.ftbquests.client.gui.quests.ChapterPanel$ChapterButton", "translateChapterSubtitle", "ftbquests: chapter button redirect applied");

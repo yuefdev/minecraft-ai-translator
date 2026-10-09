@@ -10,13 +10,13 @@ import java.lang.reflect.Method;
  * Patchouli part of the start-up check. Kept in its own class so that it is only loaded when the mod is installed (the JVM verifier would otherwise
  * try to load the optional mod's classes while verifying {@link SmokeTest}).
  */
-final class SmokeTestPatchouli {
+public final class SmokeTestPatchouli {
     
 
     private SmokeTestPatchouli() {
     }
 
-    static void run() {
+    public static void run() {
         me.langyue.autotranslation.smoke.SmokeTest.expectMethod("vazkii.patchouli.client.book.BookEntry", "translateName", "patchouli: BookEntry.getName hooked");
         me.langyue.autotranslation.smoke.SmokeTest.expectMethod("vazkii.patchouli.client.book.BookCategory", "translateName", "patchouli: BookCategory.getName hooked");
         me.langyue.autotranslation.smoke.SmokeTest.expectMethod("vazkii.patchouli.client.book.BookPage", "translateLabel", "patchouli: BookPage.i18n hooked");
