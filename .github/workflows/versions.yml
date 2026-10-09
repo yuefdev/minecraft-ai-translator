@@ -135,8 +135,20 @@ jobs:
           ( while sleep 120; do echo "--- progress $(date +%T): $(wc -l < smoke.log) log lines ---"; done ) &
           ticker=$!
           for attempt in 1 2; do
-            timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" $GRADLE -p $MODULE $TASK $extra --no-daemon --console=plain > smoke.log 2>&1
-            echo "=== attempt $attempt gradle exit code: $? ==="
+            rm -f smoke.exit
+            # own process group, so that a crashed game (which waits on its error screen) can be stopped at once
+            setsid bash -c "timeout 900 xvfb-run -a -s '-screen 0 1280x720x24' $GRADLE -p $MODULE $TASK $extra --no-daemon --console=plain > smoke.log 2>&1; echo \$? > smoke.exit" &
+            group=$!
+            while [ ! -f smoke.exit ]; do
+              sleep 5
+              if [ ! -f $MODULE/build/smoke/result.json ] && grep -qE "Crash report saved to|Minecraft Crash Report" smoke.log 2>/dev/null; then
+                sleep 10
+                echo "=== the game crashed; stopping it instead of waiting for the timeout ==="
+                kill -TERM -- -$group 2>/dev/null; sleep 5; kill -KILL -- -$group 2>/dev/null
+                echo crashed > smoke.exit
+              fi
+            done
+            echo "=== attempt $attempt gradle exit code: $(cat smoke.exit) ==="
             # a download hiccup of Mojang's or a maven host is not a result: try once more
             if [ ! -f $MODULE/build/smoke/result.json ] && grep -qE "DownloadException|Could not GET|Could not resolve|Connection reset|Read timed out" smoke.log; then
               echo "transient download problem, retrying once"; continue
@@ -166,6 +178,7 @@ jobs:
           if [ ! -f $MODULE/build/smoke/result.json ]; then
             echo "NO RESULT FILE - the game did not reach the check phase"
             grep -nE "error:|FAILED|What went wrong|Mixin apply|InvalidInjection|Missing or unsupported|Could not" smoke.log | head -n 12 | cut -c1-240
+            grep -A8 "Missing or unsupported mandatory dependencies" smoke.log | head -n 10 | cut -c1-240
             echo "--- first failure and its causes"
             grep -nE "FATAL|ExceptionInInitializerError|ReportedException|Caused by:|Description:|UnsatisfiedLink|LinkageError|NoSuchMethod|NoClassDef|ClassNotFound|Mixin|IllegalState" smoke.log | grep -v "ALSA\|AL lib" | head -n 24 | cut -c1-260
             echo "--- stack of the first exception"

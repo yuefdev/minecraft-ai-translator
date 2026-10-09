@@ -26,6 +26,13 @@ repositories {
             includeGroup "dev.ftb.mods"
         }
     }
+    maven {
+        // Item Filters, which FTB Quests needs on these versions, is published on CurseForge only
+        url "https://cursemaven.com"
+        content {
+            includeGroup "curse.maven"
+        }
+    }
     mavenCentral()
 }
 
@@ -75,6 +82,8 @@ if (project.hasProperty("smokeMods")) {
         modLocalRuntime("dev.ftb.mods:ftb-library-forge:${ftb_library_version}") { transitive = false }
         modLocalRuntime("dev.ftb.mods:ftb-teams-forge:${ftb_teams_version}") { transitive = false }
         modLocalRuntime("dev.ftb.mods:ftb-quests-forge:${ftb_quests_version}") { transitive = false }
+        // mandatory dependency of FTB Quests here ("itemfilters"); CurseForge file of the matching Item Filters build
+        modLocalRuntime("curse.maven:item-filters-309674:4553322")
         modLocalRuntime("vazkii.patchouli:Patchouli:${patchouli_version}")
     }
 }
