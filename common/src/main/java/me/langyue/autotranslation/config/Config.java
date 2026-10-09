@@ -68,6 +68,9 @@ public class Config implements ConfigData {
         @Comment("Dil dosyası anahtarlarını, eşya açıklamalarını ve mod arayüz metinlerini çevir")
         public boolean translateGeneric = true;
 
+        @Comment("Her modun ekranındaki sabit yazılı İngilizce metinleri kendiliğinden çevir (ekran simgesiyle tek tek kapatılabilir). Kapalıysa yalnızca simgeyle açtığınız ekranlar çevrilir")
+        public boolean translateAllScreens = true;
+
         @Comment("Türkçe metnin yanında orijinal İngilizce metni de göster")
         public boolean showOriginal = false;
 

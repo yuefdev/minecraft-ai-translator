@@ -133,9 +133,52 @@ public final class SmokeTest {
         check("provider configured against local fake endpoint", TranslationRuntime.providerConfigured(), "");
 
         checkMixinsApplied();
+        checkGenericTranslation(minecraft);
         for (Integrations.SmokeCheck optional : Integrations.smokeChecks()) {
             checkOptionalMod(optional.modId(), optional.probeClass(), optional.functional());
         }
+    }
+
+    private static final String SAMPLE_KEY = "autotranslation.smoke.sample";
+    private static final String SAMPLE_LITERAL = "Welcome back, brave explorer of the deep caves";
+
+    /** A screen of "some other mod": it is not on any list, so only the default behaviour decides. */
+    private static final class SmokeScreen extends net.minecraft.client.gui.screens.Screen {
+        SmokeScreen() {
+            super(Component.literal("smoke"));
+        }
+    }
+
+    /**
+     * The part that matters for "translate every mod": nothing here knows FTB Quests or Patchouli. A mod without a
+     * Turkish language file and a mod that draws hard-coded English text must both end up in Turkish by themselves.
+     */
+    private static void checkGenericTranslation(Minecraft minecraft) {
+        final boolean[] reloaded = {false};
+        minecraft.getLanguageManager().setSelected("tr_tr");
+        minecraft.options.languageCode = "tr_tr";
+        minecraft.reloadResourcePacks().thenRun(() -> reloaded[0] = true);
+        WAITING.add(new Pending("generic: resources reloaded with Turkish selected", () -> reloaded[0], 2400,
+                () -> check("generic: resources reloaded with Turkish selected", false, "the reload did not finish")));
+        WAITING.add(new Pending("generic: language-file text of a mod without a Turkish file is translated (I18n.get)",
+                () -> reloaded[0] && net.minecraft.client.resources.language.I18n.get(SAMPLE_KEY).startsWith("TR| Open the chest"), 1800,
+                () -> check("generic: language-file text of a mod without a Turkish file is translated (I18n.get)", false,
+                        "I18n.get -> " + net.minecraft.client.resources.language.I18n.get(SAMPLE_KEY)
+                                + " | last error: " + TranslationRuntime.service().stats().lastError())));
+        WAITING.add(new Pending("generic: hard-coded English text on a mod screen is translated without any per-screen setting",
+                () -> {
+                    if (!reloaded[0]) return false;
+                    if (!(minecraft.screen instanceof SmokeScreen)) {
+                        minecraft.setScreen(new SmokeScreen());
+                        return false;
+                    }
+                    var contents = Component.literal(SAMPLE_LITERAL).getContents();
+                    return contents instanceof net.minecraft.network.chat.contents.LiteralContents literal
+                            && literal.text().startsWith("TR| Welcome back");
+                }, 1800,
+                () -> check("generic: hard-coded English text on a mod screen is translated without any per-screen setting", false,
+                        "screen=" + minecraft.screen + " text=" + Component.literal(SAMPLE_LITERAL).getContents()
+                                + " | last error: " + TranslationRuntime.service().stats().lastError())));
     }
 
     private static void checkMixinsApplied() {

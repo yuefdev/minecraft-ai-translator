@@ -21,6 +21,8 @@ import java.util.concurrent.TimeUnit;
 public class ScreenTranslationHelper {
 
     private static final Path file = AutoTranslation.ROOT.resolve("screen.whitelist");
+    /** Screens the player switched off while "translate all screens" is on. */
+    private static final Path disabledFile = AutoTranslation.ROOT.resolve("screen.disabled");
     private static boolean ready = false;
 
     // MC 代码加密的，编译后包名就变了，所以只能这样
@@ -30,6 +32,7 @@ public class ScreenTranslationHelper {
     }};
 
     private static final Set<String> WHITELIST = new LinkedHashSet<>();
+    private static final Set<String> DISABLED = new LinkedHashSet<>();
     private static final Set<String> BLACKLIST = new LinkedHashSet<>() {{
         add(ChatScreen.class.getName());
         add(BookEditScreen.class.getName());
@@ -75,15 +78,21 @@ public class ScreenTranslationHelper {
         write();
     }
 
+    private static boolean translateAll() {
+        return AutoTranslation.CONFIG.turkish.translateAllScreens;
+    }
+
     private static void read() {
         List<String> lines = FileUtils.readToList(file);
-        if (lines == null || lines.isEmpty()) return;
-        WHITELIST.addAll(lines);
+        if (lines != null && !lines.isEmpty()) WHITELIST.addAll(lines);
+        List<String> off = FileUtils.readToList(disabledFile);
+        if (off != null && !off.isEmpty()) DISABLED.addAll(off);
     }
 
     private static void write() {
         if (!needSave) return;
         FileUtils.write(file, WHITELIST);
+        FileUtils.write(disabledFile, DISABLED);
     }
 
     /**
@@ -96,7 +105,16 @@ public class ScreenTranslationHelper {
         String name = getClassName(screen);
         needSave = true;
         boolean status = false;
-        if (WHITELIST.contains(name)) {
+        if (translateAll()) {
+            // default is "on": the player's toggle records an exception instead of an opt-in
+            if (!isInBlacklist(screen)) {
+                if (DISABLED.remove(name)) {
+                    status = true;
+                } else {
+                    DISABLED.add(name);
+                }
+            }
+        } else if (WHITELIST.contains(name)) {
             WHITELIST.remove(name);
         } else if (!isInBlacklist(screen)) {
             WHITELIST.add(name);
@@ -115,7 +133,9 @@ public class ScreenTranslationHelper {
         if (screen == null) return;
         boolean inBlacklist = isInBlacklist(screen);
         ScreenAccessor screenAccessor = (ScreenAccessor) screen;
-        screenAccessor.at$shouldTranslate(!inBlacklist && WHITELIST.contains(getClassName(screen)));
+        String name = getClassName(screen);
+        boolean wanted = translateAll() ? !DISABLED.contains(name) : WHITELIST.contains(name);
+        screenAccessor.at$shouldTranslate(!inBlacklist && wanted);
         screenAccessor.at$showIcon(!inBlacklist);
     }
 

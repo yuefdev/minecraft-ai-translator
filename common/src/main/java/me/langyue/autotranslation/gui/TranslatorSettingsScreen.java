@@ -63,6 +63,7 @@ public class TranslatorSettingsScreen extends Screen {
     private boolean quests = settings.translateQuests;
     private boolean books = settings.translateBooks;
     private boolean generic = settings.translateGeneric;
+    private boolean allScreens = settings.translateAllScreens;
     private boolean showOriginal = settings.showOriginal;
     private boolean pauseEditing = settings.pauseWhileEditingQuests;
     private boolean bulk = settings.bulkLanguageFiles;
@@ -139,6 +140,7 @@ public class TranslatorSettingsScreen extends Screen {
         toggle(left, y += 24, "autotranslation.gui.quests", quests, v -> quests = v);
         toggle(left, y += 24, "autotranslation.gui.books", books, v -> books = v);
         toggle(left, y += 24, "autotranslation.gui.generic", generic, v -> generic = v);
+        toggle(left, y += 24, "autotranslation.gui.all_screens", allScreens, v -> allScreens = v);
         toggle(left, y += 24, "autotranslation.gui.show_original", showOriginal, v -> showOriginal = v);
         toggle(left, y += 24, "autotranslation.gui.pause_editing", pauseEditing, v -> pauseEditing = v);
         toggle(left, y += 24, "autotranslation.gui.bulk", bulk, v -> bulk = v);
@@ -274,6 +276,7 @@ public class TranslatorSettingsScreen extends Screen {
         settings.translateQuests = quests;
         settings.translateBooks = books;
         settings.translateGeneric = generic;
+        settings.translateAllScreens = allScreens;
         settings.showOriginal = showOriginal;
         AutoTranslation.CONFIG.appendOriginal = showOriginal;
         settings.pauseWhileEditingQuests = pauseEditing;

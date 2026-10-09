@@ -9,6 +9,8 @@
   "autotranslation.gui.quests": "Görev çevirisi (FTB Quests)",
   "autotranslation.gui.books": "Kitap çevirisi (Patchouli)",
   "autotranslation.gui.generic": "Eşya, arayüz ve dil dosyası metinleri",
+  "autotranslation.gui.all_screens": "Tüm ekranlardaki sabit yazılı metinleri çevir",
+  "text.autoconfig.autotranslation.option.turkish.translateAllScreens": "Tüm ekranlardaki sabit yazılı metinleri çevir",
   "autotranslation.gui.show_original": "Türkçenin yanında orijinali göster",
   "autotranslation.gui.pause_editing": "Görev düzenleme modunda çevirme",
   "autotranslation.gui.bulk": "Açılışta tüm dil dosyalarını toplu çevir (ücretli olabilir)",
