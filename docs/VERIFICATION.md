@@ -31,13 +31,13 @@ Durum işaretleri: ✅ CI'da geçti · ❌ CI'da başarısız · ⏳ sonuç bekl
 
 | Sürüm | Derleme | Oyun açılışı (yalnız bu mod) | Her mod: dil dosyası | Her mod: ekrandaki sabit yazı | FTB Quests | Patchouli | BetterQuesting |
 |---|---|---|---|---|---|---|---|
-| 1.20.1 Forge (ana sürüm) | ✅ | ✅ | ✅ | ✅ | ⏳ | ✅ | — |
+| 1.20.1 Forge (ana sürüm) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | 1.19.2 Forge | ✅ | ✅ | ✅ | ✅ | ⏳ | ⏳ | — |
 | 1.18.2 Forge | ✅ | ✅ | ✅ | ✅ | ⏳ | ⏳ | — |
-| 1.16.5 Forge | ✅ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — |
-| 1.12.2 Forge | ✅ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
+| 1.16.5 Forge | ✅ | ✅ | ✅ | ✅ | ⏳ | ⏳ | — |
+| 1.12.2 Forge | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 1.21.1 NeoForge | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
-| 26.1.2 NeoForge | ✅ | ⏳ | ⏳ | ⏳ | ⏳ | — (Patchouli bu sürüme çıkmadı) | — |
+| 26.1.2 NeoForge | ✅ | ✅ | ✅ | ✅ | ✅ | — (Patchouli bu sürüme çıkmadı) | — |
 
 ## Doğrulanmayanlar (açıkça)
 
@@ -48,6 +48,9 @@ Durum işaretleri: ✅ CI'da geçti · ❌ CI'da başarısız · ⏳ sonuç bekl
 * **Gerçek görev tamamlama** (eşya teslim etme, ödül alma) CI'da oynanmadı; görev verisinin değişmediği ölçüldü.
 * **Fabric** modülü derlenmiyor ve sınanmadı.
 * **Büyük mod paketleri** (yüzlerce mod) ve binlerce metinle performans sınanmadı.
+* 1.16.5'te geliştirme ortamı (Architectury Loom) Forge'un yeniden adlandırdığı iki `Transformation` yöntemini
+  bulamıyordu; yalnızca geliştirme çalıştırmasında devreye giren küçük bir düzeltme eklendi
+  (`mixin/dev/TransformationDevMixin`, gerçek oyunda uygulanmaz). Gerçek bir 1.16.5 kurulumunda oyun içi deneme yapılmadı.
 * `gradlew.bat` (Windows) çalıştırılmadı; aynı Gradle görevi Linux'ta `./gradlew` ile çalıştırıldı.
 * Doku/resim içine çizilmiş yazılar ve sohbet mesajları bilerek çevrilmez.
 
