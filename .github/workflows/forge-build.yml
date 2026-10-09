@@ -4,7 +4,16 @@ on:
   push:
     branches:
       - 'claude/**'
+    paths-ignore:
+      - '.github/workflows/discover.yml'
+      - 'docs/**'
+      - '**.md'
   workflow_dispatch:
+
+# A newer push to the same branch supersedes a run that is still going.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
