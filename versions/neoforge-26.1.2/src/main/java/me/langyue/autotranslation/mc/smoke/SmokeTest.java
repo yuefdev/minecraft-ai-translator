@@ -97,7 +97,37 @@ public final class SmokeTest {
                 () -> "no translation; last error: " + Engine.get().service().stats().lastError());
 
         checkOptional(engine, "ftbquests", "dev.ftb.mods.ftbquests.quest.QuestObjectBase", 0);
+        checkGeneric(minecraft);
         // Patchouli has no build for this Minecraft version
+    }
+
+    private static final String SAMPLE_KEY = "autotranslation.smoke.sample";
+    private static final String SAMPLE_LITERAL = "Welcome back, brave explorer of the deep caves";
+
+    /**
+     * The part that matters for "translate every mod": nothing here knows FTB Quests or Patchouli. Text from the
+     * language file of a mod and hard-coded text on the screen of another mod must end up translated by themselves.
+     */
+    private static void checkGeneric(final Minecraft minecraft) {
+        REPORT.waitFor("generic: language-file text of any mod is translated (I18n.get)",
+                () -> net.minecraft.client.resources.language.I18n.get(SAMPLE_KEY).startsWith("TR| Open the chest"), 900,
+                () -> "I18n.get -> " + net.minecraft.client.resources.language.I18n.get(SAMPLE_KEY)
+                        + " | last error: " + Engine.get().service().stats().lastError());
+        REPORT.waitFor("generic: hard-coded English text on another mod's screen is translated by itself",
+                () -> {
+                    // last of all: while an ordinary screen is open every other check would see doubly translated text
+                    if (REPORT.pendingCount() > 1) return false;
+                    if (!(minecraft.screen instanceof smoketest.OtherModScreen)) {
+                        minecraft.setScreen(new smoketest.OtherModScreen());
+                        return false;
+                    }
+                    Object contents = net.minecraft.network.chat.Component.literal(SAMPLE_LITERAL).getContents();
+                    return contents instanceof net.minecraft.network.chat.contents.PlainTextContents
+                            && ((net.minecraft.network.chat.contents.PlainTextContents) contents).text().startsWith("TR| Welcome back");
+                }, 900,
+                () -> "screen=" + minecraft.screen + " text="
+                        + net.minecraft.network.chat.Component.literal(SAMPLE_LITERAL).getContents()
+                        + " | last error: " + Engine.get().service().stats().lastError());
     }
 
     private static void checkOptional(Engine engine, String modId, String probeClass, int which) {
