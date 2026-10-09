@@ -35,12 +35,16 @@ başlatma), `versions.yml` (diğer sürümler: derleme + oyun başlatma).
 
 Durum işaretleri: ✅ CI'da geçti · ❌ CI'da başarısız · ⏳ sonuç bekleniyor · — uygulanamaz
 
+Son tam çalıştırma: tüm sürümler için derleme + iki oyun açılışı (18 iş) başarılı. FTB Quests 1.16.5/1.18.2/1.19.2'de
+zorunlu bağımlılığı **Item Filters**'ı ister; testlerde CurseForge'daki ilgili sürümü kullanılır (oyuncunun modpaketinde
+zaten vardır).
+
 | Sürüm | Derleme | Oyun açılışı (yalnız bu mod) | Her mod: dil dosyası | Her mod: ekrandaki sabit yazı | FTB Quests | Patchouli | BetterQuesting |
 |---|---|---|---|---|---|---|---|
 | 1.20.1 Forge (ana sürüm) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
-| 1.19.2 Forge | ✅ | ✅ | ✅ | ✅ | ⏳ | ⏳ | — |
-| 1.18.2 Forge | ✅ | ✅ | ✅ | ✅ | ⏳ | ⏳ | — |
-| 1.16.5 Forge | ✅ | ✅ | ✅ | ✅ | ⏳ | ⏳ | — |
+| 1.19.2 Forge | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| 1.18.2 Forge | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| 1.16.5 Forge | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | 1.12.2 Forge | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 1.21.1 NeoForge | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | 26.1.2 NeoForge | ✅ | ✅ | ✅ | ✅ | ✅ | — (Patchouli bu sürüme çıkmadı) | — |
