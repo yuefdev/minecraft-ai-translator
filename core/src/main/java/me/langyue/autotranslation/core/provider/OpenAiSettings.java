@@ -16,8 +16,31 @@ public final class OpenAiSettings {
     private final double temperature;
     private final int maxOutputTokens;
     private final boolean jsonResponseFormat;
+    private final java.util.Map<String, String> extraParameters;
+    private final java.util.List<String> fallbackModels;
 
     public OpenAiSettings(String baseUrl, String model, Secret apiKey, int connectTimeoutMillis, int requestTimeoutMillis, double temperature, int maxOutputTokens, boolean jsonResponseFormat) {
+        this(baseUrl, model, apiKey, connectTimeoutMillis, requestTimeoutMillis, temperature, maxOutputTokens, jsonResponseFormat,
+                java.util.Collections.<String, String>emptyMap());
+    }
+
+    /**
+     * @param extraParameters additional top-level request fields with string values (for example
+     *                        {@code reasoning_effort=none}); dropped one by one if the endpoint refuses them
+     */
+    public OpenAiSettings(String baseUrl, String model, Secret apiKey, int connectTimeoutMillis, int requestTimeoutMillis, double temperature, int maxOutputTokens, boolean jsonResponseFormat,
+                          java.util.Map<String, String> extraParameters) {
+        this(baseUrl, model, apiKey, connectTimeoutMillis, requestTimeoutMillis, temperature, maxOutputTokens, jsonResponseFormat,
+                extraParameters, java.util.Collections.<String>emptyList());
+    }
+
+    /**
+     * @param temperature    {@link Double#NaN} leaves the field out (the service's own default is used)
+     * @param fallbackModels further models of the same service, used in turn when a model's daily quota is used up
+     *                       or the model was withdrawn
+     */
+    public OpenAiSettings(String baseUrl, String model, Secret apiKey, int connectTimeoutMillis, int requestTimeoutMillis, double temperature, int maxOutputTokens, boolean jsonResponseFormat,
+                          java.util.Map<String, String> extraParameters, java.util.List<String> fallbackModels) {
         this.baseUrl = baseUrl;
         this.model = model;
         this.apiKey = apiKey;
@@ -26,6 +49,18 @@ public final class OpenAiSettings {
         this.temperature = temperature;
         this.maxOutputTokens = maxOutputTokens;
         this.jsonResponseFormat = jsonResponseFormat;
+        this.extraParameters = java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<String, String>(
+                extraParameters == null ? java.util.Collections.<String, String>emptyMap() : extraParameters));
+        this.fallbackModels = java.util.Collections.unmodifiableList(new java.util.ArrayList<String>(
+                fallbackModels == null ? java.util.Collections.<String>emptyList() : fallbackModels));
+    }
+
+    public java.util.List<String> fallbackModels() {
+        return fallbackModels;
+    }
+
+    public java.util.Map<String, String> extraParameters() {
+        return extraParameters;
     }
 
     public String baseUrl() {
@@ -65,12 +100,12 @@ public final class OpenAiSettings {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         OpenAiSettings other = (OpenAiSettings) o;
-        return java.util.Objects.equals(baseUrl, other.baseUrl) && java.util.Objects.equals(model, other.model) && java.util.Objects.equals(apiKey, other.apiKey) && connectTimeoutMillis == other.connectTimeoutMillis && requestTimeoutMillis == other.requestTimeoutMillis && temperature == other.temperature && maxOutputTokens == other.maxOutputTokens && jsonResponseFormat == other.jsonResponseFormat;
+        return java.util.Objects.equals(baseUrl, other.baseUrl) && java.util.Objects.equals(model, other.model) && java.util.Objects.equals(apiKey, other.apiKey) && connectTimeoutMillis == other.connectTimeoutMillis && requestTimeoutMillis == other.requestTimeoutMillis && temperature == other.temperature && maxOutputTokens == other.maxOutputTokens && jsonResponseFormat == other.jsonResponseFormat && extraParameters.equals(other.extraParameters) && fallbackModels.equals(other.fallbackModels);
     }
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(baseUrl, model, apiKey, connectTimeoutMillis, requestTimeoutMillis, temperature, maxOutputTokens, jsonResponseFormat);
+        return java.util.Objects.hash(baseUrl, model, apiKey, connectTimeoutMillis, requestTimeoutMillis, temperature, maxOutputTokens, jsonResponseFormat, extraParameters, fallbackModels);
     }
 
     public static OpenAiSettings defaults() {
@@ -80,12 +115,12 @@ public final class OpenAiSettings {
 
     public OpenAiSettings withModel(String newModel) {
         return new OpenAiSettings(baseUrl, newModel, apiKey, connectTimeoutMillis, requestTimeoutMillis,
-                temperature, maxOutputTokens, jsonResponseFormat);
+                temperature, maxOutputTokens, jsonResponseFormat, extraParameters, fallbackModels);
     }
 
     public OpenAiSettings withApiKey(Secret key) {
         return new OpenAiSettings(baseUrl, model, key, connectTimeoutMillis, requestTimeoutMillis,
-                temperature, maxOutputTokens, jsonResponseFormat);
+                temperature, maxOutputTokens, jsonResponseFormat, extraParameters, fallbackModels);
     }
 
     /** Full URL of the chat completions endpoint. */

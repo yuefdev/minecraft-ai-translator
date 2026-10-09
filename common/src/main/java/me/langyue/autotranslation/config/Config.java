@@ -80,10 +80,13 @@ public class Config implements ConfigData {
         @Comment("Başlangıçta tüm çevrilmemiş dil dosyalarını toplu çevir (çok sayıda istek oluşturur ve ücret doğurabilir)")
         public boolean bulkLanguageFiles = false;
 
-        @Comment("OpenAI uyumlu uç nokta (taban adres), örn. https://api.openai.com/v1 veya http://localhost:11434/v1")
+        @Comment("Çeviri hizmeti: auto (anahtara göre seçilir; anahtar yoksa ücretsiz, anahtarsız Google Çeviri), google-free, gemini (ücretsiz anahtar), groq, openrouter, ollama (bilgisayarınızda) veya custom (aşağıdaki uç nokta ve model)")
+        public String provider = "auto";
+
+        @Comment("Yalnızca 'custom' hizmette: OpenAI uyumlu uç nokta (taban adres), örn. https://api.openai.com/v1 veya http://localhost:11434/v1")
         public String endpoint = "https://api.openai.com/v1";
 
-        @Comment("Model adı")
+        @Comment("Yalnızca 'custom' hizmette: model adı")
         public String model = "gpt-4o-mini";
 
         @Comment("Dakikadaki en çok istek sayısı")

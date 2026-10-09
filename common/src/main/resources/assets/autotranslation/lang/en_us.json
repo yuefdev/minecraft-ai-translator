@@ -103,5 +103,16 @@
   "text.autoconfig.autotranslation.option.turkish.maxRetries": "Max retries",
   "text.autoconfig.autotranslation.option.turkish.queueSize": "Queue limit",
   "text.autoconfig.autotranslation.option.turkish.cacheMaxEntries": "Cache limit",
-  "text.autoconfig.autotranslation.option.turkish.temperature": "Model temperature"
+  "text.autoconfig.autotranslation.option.turkish.temperature": "Model temperature",
+  "autotranslation.gui.service": "Service",
+  "autotranslation.gui.service.auto": "Automatic (by key; Google Translate without a key)",
+  "autotranslation.gui.service.google-free": "Google Translate (free, no key)",
+  "autotranslation.gui.service.gemini": "Google Gemini (free key, recommended)",
+  "autotranslation.gui.service.groq": "Groq (free key)",
+  "autotranslation.gui.service.openrouter": "OpenRouter (free models)",
+  "autotranslation.gui.service.ollama": "Ollama (on this computer, free)",
+  "autotranslation.gui.service.custom": "Custom (address and model below)",
+  "autotranslation.gui.get_key": "Get a free key",
+  "autotranslation.gui.status.service": "Service in use: %s · model %s · at most %s requests/min",
+  "autotranslation.gui.service.mistral": "Mistral (free key, phone verification)"
 }

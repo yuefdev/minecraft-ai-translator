@@ -14,6 +14,13 @@ public class EngineSettings {
     public boolean pauseWhileEditingQuests = true;
     public boolean bulkLanguageFiles = false;
 
+    /**
+     * Translation service: "auto" (default: the key decides - Gemini "AIza...", Groq "gsk_...", OpenRouter
+     * "sk-or-..."; without a key the free, keyless Google machine translation), "google-free", "gemini", "groq",
+     * "openrouter", "ollama", or "custom" (the endpoint and model below, e.g. OpenAI).
+     */
+    public String provider = "auto";
+
     public String endpoint = "https://api.openai.com/v1";
     public String model = "gpt-4o-mini";
     public int requestsPerMinute = 60;

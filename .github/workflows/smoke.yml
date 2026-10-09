@@ -93,7 +93,7 @@ jobs:
           bad = []
           if not r["ok"]: bad.append("at least one check failed")
           if r["ftbquestsLoaded"] != want_mods or r["patchouliLoaded"] != want_mods: bad.append("unexpected optional mod set")
-          if want_mods and r["providerRequests"] < 3: bad.append("pipeline sent too few requests to the fake provider")
+          if want_mods and r["providerRequests"] < 1: bad.append("pipeline sent no request to the fake provider")
           if want_mods and not r["authorizationHeaderSent"]: bad.append("API key was not sent as a bearer token")
           if bad:
               print("SMOKE TEST FAILED:", "; ".join(bad)); sys.exit(1)

@@ -12,6 +12,10 @@ public final class ProviderException extends Exception {
         AUTH(false),
         BAD_REQUEST(false),
         RATE_LIMIT(true),
+        /** A free tier's daily (or monthly) allowance is used up: retrying soon is pointless. */
+        QUOTA(false),
+        /** The model (or the address) does not exist for this account any more, e.g. withdrawn for new users. */
+        MODEL_UNAVAILABLE(false),
         SERVER(true),
         TIMEOUT(true),
         NETWORK(true),

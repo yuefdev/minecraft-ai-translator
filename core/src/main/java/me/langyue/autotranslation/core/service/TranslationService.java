@@ -188,6 +188,7 @@ public final class TranslationService implements AutoCloseable {
         private LongSupplier clock = System::currentTimeMillis;
         private Sleeper sleeper = Sleeper.SYSTEM;
         private int workers = 2;
+        private boolean coalesce = false;
 
         public Builder settings(Settings value) {
             this.settings = value;
@@ -242,6 +243,16 @@ public final class TranslationService implements AutoCloseable {
 
         public Builder workers(int value) {
             this.workers = Math.max(1, value);
+            return this;
+        }
+
+        /**
+         * Lets one provider call carry several short, independent texts (item names, button labels) that were asked
+         * for at about the same time - a screen asks for all of its labels in one frame. Free tiers allow only a
+         * few requests per minute, so this matters more than the slightly more general prompt context.
+         */
+        public Builder coalesceShortTexts(boolean value) {
+            this.coalesce = value;
             return this;
         }
 
@@ -304,6 +315,7 @@ public final class TranslationService implements AutoCloseable {
     }
 
     private static final class Unit {
+        Job job;
         int segment;
         MaskedText masked;
         String trailing = "";
@@ -354,6 +366,14 @@ public final class TranslationService implements AutoCloseable {
     private final Sleeper sleeper;
     private final Masker masker = new Masker();
     private final RateLimiter rateLimiter;
+    private final boolean coalesce;
+
+    /** A job is "short" when all of its unresolved text fits in this many characters. */
+    private static final int SHORT_JOB_CHARS = 400;
+    /** Pause after a "daily quota used up" answer when the service does not say how long to wait. */
+    static final long QUOTA_PAUSE_MILLIS = 15 * 60_000L;
+    /** How long a worker waits for more short texts before it sends what it has. */
+    private static final long COALESCE_WINDOW_MILLIS = 150L;
 
     private final Map<String, Prepared> preparedMemo = new ConcurrentHashMap<>();
     private final Map<String, Result> readyMemo = new ConcurrentHashMap<>();
@@ -386,6 +406,7 @@ public final class TranslationService implements AutoCloseable {
         this.clock = b.clock;
         this.sleeper = b.sleeper;
         this.rateLimiter = new RateLimiter(b.clock, b.sleeper);
+        this.coalesce = b.coalesce;
         this.queue = new LinkedBlockingDeque<>(Math.max(1, b.settings.queueCapacity()));
         this.workerPool = Executors.newFixedThreadPool(b.workers, daemonFactory("AutoTranslation-Worker"));
         this.callPool = Executors.newCachedThreadPool(daemonFactory("AutoTranslation-Call"));
@@ -647,45 +668,105 @@ public final class TranslationService implements AutoCloseable {
                 return;
             }
             if (job == null) continue;
-            inFlight.incrementAndGet();
+            List<Job> group = new ArrayList<>();
+            group.add(job);
+            if (coalesce && isShort(job)) {
+                try {
+                    collectShortJobs(group);
+                } catch (InterruptedException e) {
+                    for (Job j : group) failUnresolved(j, "interrupted");
+                    for (Job j : group) finish(j);
+                    return;
+                }
+            }
+            inFlight.addAndGet(group.size());
             try {
-                runJob(job);
+                runJobs(group);
             } catch (InterruptedException e) {
-                failUnresolved(job, "interrupted");
+                for (Job j : group) failUnresolved(j, "interrupted");
                 return;
             } catch (Throwable t) {
                 CoreLog.error("Unexpected translation failure", t);
                 recordError("Internal error: " + Redactor.redact(t));
-                failUnresolved(job, lastError);
+                for (Job j : group) failUnresolved(j, lastError);
             } finally {
-                inFlight.decrementAndGet();
-                finish(job);
+                inFlight.addAndGet(-group.size());
+                for (Job j : group) finish(j);
             }
         }
     }
 
-    private void runJob(Job job) throws InterruptedException {
+    private boolean isShort(Job job) {
+        int chars = 0;
+        for (int index : job.unresolved) {
+            chars += job.prepared[index].masked().masked().length();
+            if (chars > SHORT_JOB_CHARS) return false;
+        }
+        return true;
+    }
+
+    /** Adds further short jobs to the group while they keep arriving and the batch limits allow it. */
+    private void collectShortJobs(List<Job> group) throws InterruptedException {
+        Settings st = settings;
+        int chars = 0;
+        int segments = 0;
+        for (Job j : group) {
+            for (int index : j.unresolved) chars += j.prepared[index].masked().masked().length();
+            segments += j.unresolved.size();
+        }
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(COALESCE_WINDOW_MILLIS);
+        while (!closed) {
+            long wait = deadline - System.nanoTime();
+            Job next = wait <= 0 ? queue.pollFirst() : queue.pollFirst(wait, TimeUnit.NANOSECONDS);
+            if (next == null) return;
+            int nextChars = 0;
+            for (int index : next.unresolved) nextChars += next.prepared[index].masked().masked().length();
+            if (!isShort(next) || chars + nextChars > st.maxBatchChars()
+                    || segments + next.unresolved.size() > st.maxSegmentsPerBatch()) {
+                if (!queue.offerFirst(next)) runAlone(next);
+                return;
+            }
+            group.add(next);
+            chars += nextChars;
+            segments += next.unresolved.size();
+        }
+    }
+
+    /** Only if the job cannot go back into a full queue: it still gets an answer, it is not dropped. */
+    private void runAlone(Job job) throws InterruptedException {
+        inFlight.incrementAndGet();
+        try {
+            runJobs(Collections.singletonList(job));
+        } finally {
+            inFlight.decrementAndGet();
+            finish(job);
+        }
+    }
+
+    private void runJobs(List<Job> jobs) throws InterruptedException {
         Settings st = settings;
         TranslationProvider provider = providerSupplier.get();
         if (clock.getAsLong() < pausedUntil) {
-            failUnresolved(job, "paused after repeated failures");
+            for (Job job : jobs) failUnresolved(job, "paused after repeated failures");
             return;
         }
         if (provider == null || !provider.isConfigured()) {
             recordError("Translation provider is not configured");
-            failUnresolved(job, lastError);
+            for (Job job : jobs) failUnresolved(job, lastError);
             return;
         }
 
         List<Unit> units = new ArrayList<>();
-        for (int index : job.unresolved) {
-            MaskedText masked = job.prepared[index].masked();
-            if (masked.isRunMode() || masked.masked().length() <= st.maxBatchChars()) {
-                units.add(unit(index, masked, ""));
-                continue;
-            }
-            for (TextChunker.Piece piece : TextChunker.split(masked.masked(), st.maxBatchChars())) {
-                units.add(unit(index, masker.slice(masked, piece.text()), piece.trailingWhitespace()));
+        for (Job job : jobs) {
+            for (int index : job.unresolved) {
+                MaskedText masked = job.prepared[index].masked();
+                if (masked.isRunMode() || masked.masked().length() <= st.maxBatchChars()) {
+                    units.add(unit(job, index, masked, ""));
+                    continue;
+                }
+                for (TextChunker.Piece piece : TextChunker.split(masked.masked(), st.maxBatchChars())) {
+                    units.add(unit(job, index, masker.slice(masked, piece.text()), piece.trailingWhitespace()));
+                }
             }
         }
 
@@ -707,29 +788,39 @@ public final class TranslationService implements AutoCloseable {
 
         try {
             for (List<Unit> batch : batches) {
-                translateBatch(job, batch, units, st, provider);
+                translateBatch(batch, units, st, provider);
             }
             consecutiveFailures.set(0);
         } catch (ProviderException e) {
             recordError(e.getMessage());
-            if (e.kind() != ProviderException.Kind.NOT_CONFIGURED) {
+            if (e.kind() == ProviderException.Kind.QUOTA) {
+                // a free tier's daily allowance: ask again much later, meanwhile cached translations keep working
+                long pause = Math.max(e.retryAfterMillis(), QUOTA_PAUSE_MILLIS);
+                pausedUntil = clock.getAsLong() + pause;
+                consecutiveFailures.set(0);
+                CoreLog.warn("Free quota used up; new translations paused for " + pause / 60_000L + " min");
+            } else if (e.kind() != ProviderException.Kind.NOT_CONFIGURED) {
                 if (consecutiveFailures.incrementAndGet() >= st.breakerThreshold()) {
                     pausedUntil = clock.getAsLong() + st.breakerPauseMillis();
                     consecutiveFailures.set(0);
                     CoreLog.warn("Translation paused for " + st.breakerPauseMillis() / 1000 + "s after repeated failures");
                 }
             }
-            job.failureDetail = e.getMessage();
+            for (Job job : jobs) job.failureDetail = e.getMessage();
         }
 
-        // assemble per segment
+        for (Job job : jobs) assemble(job, units);
+    }
+
+    /** Puts the translated pieces of every segment of the job back together (per segment, in order). */
+    private void assemble(Job job, List<Unit> units) {
         for (int index : job.unresolved) {
             StringBuilder text = new StringBuilder();
             RestoreResult runResult = null;
             boolean complete = true;
             String reason = job.failureDetail;
             for (Unit unit : units) {
-                if (unit.segment != index) continue;
+                if (unit.job != job || unit.segment != index) continue;
                 if (unit.passthrough) {
                     text.append(unit.masked.original()).append(unit.trailing);
                 } else if (unit.result == null) {
@@ -753,8 +844,9 @@ public final class TranslationService implements AutoCloseable {
         }
     }
 
-    private Unit unit(int segment, MaskedText masked, String trailing) {
+    private Unit unit(Job job, int segment, MaskedText masked, String trailing) {
         Unit unit = new Unit();
+        unit.job = job;
         unit.segment = segment;
         unit.masked = masked;
         unit.trailing = trailing;
@@ -762,7 +854,7 @@ public final class TranslationService implements AutoCloseable {
         return unit;
     }
 
-    private void translateBatch(Job job, List<Unit> batch, List<Unit> allUnits, Settings st, TranslationProvider provider)
+    private void translateBatch(List<Unit> batch, List<Unit> allUnits, Settings st, TranslationProvider provider)
             throws ProviderException, InterruptedException {
         List<Unit> pending = new ArrayList<>(batch);
         for (int round = 0; round < 2 && !pending.isEmpty(); round++) {
@@ -772,7 +864,7 @@ public final class TranslationService implements AutoCloseable {
                 segments.add(unit.masked.masked());
                 visible.append(masker.visibleText(unit.masked)).append('\n');
             }
-            TranslationContext context = contextFor(job, pending, allUnits, st, visible.toString());
+            TranslationContext context = contextFor(pending, st, visible.toString());
             ProviderRequest request = new ProviderRequest(st.target(), segments, context, round > 0);
             List<String> answers = callWithRetries(provider, request, st);
             List<Unit> invalid = new ArrayList<>();
@@ -791,8 +883,25 @@ public final class TranslationService implements AutoCloseable {
         }
     }
 
-    private TranslationContext contextFor(Job job, List<Unit> batch, List<Unit> allUnits, Settings st, String visible) {
+    private TranslationContext contextFor(List<Unit> batch, Settings st, String visible) {
+        Map<String, String> terms = glossary.matching(visible, st.glossaryTermLimit());
+        Job job = batch.get(0).job;
+        boolean oneJob = true;
+        boolean oneMod = true;
+        boolean oneType = true;
+        for (Unit unit : batch) {
+            if (unit.job == job) continue;
+            oneJob = false;
+            if (!unit.job.request.content().sourceMod().equals(job.request.content().sourceMod())) oneMod = false;
+            if (!unit.job.request.content().contentType().equals(job.request.content().contentType())) oneType = false;
+        }
         Types.Content content = job.request.content();
+        if (!oneJob) {
+            // independent short texts from one screen: no surrounding text, a shared description
+            return new TranslationContext(oneMod ? content.sourceMod() : "several mods",
+                    oneType ? content.contentType() + " (several independent texts)" : "short independent game texts (names, labels, tooltips)",
+                    "", "", "", terms);
+        }
         Unit first = batch.get(0);
         Unit last = batch.get(batch.size() - 1);
         String before = "";
@@ -802,7 +911,6 @@ public final class TranslationService implements AutoCloseable {
         List<Segment> segments = job.request.segments();
         if (firstSegment > 0) before = tail(segments.get(firstSegment - 1).text(), 400);
         if (lastSegment + 1 < segments.size()) after = head(segments.get(lastSegment + 1).text(), 400);
-        Map<String, String> terms = glossary.matching(visible, st.glossaryTermLimit());
         return new TranslationContext(content.sourceMod(), content.contentType(), content.titleContext(), before, after, terms);
     }
 
@@ -914,6 +1022,12 @@ public final class TranslationService implements AutoCloseable {
         closed = true;
         workerPool.shutdownNow();
         callPool.shutdownNow();
+        try {
+            // a worker that is just finishing must not write to the cache while (or after) it is compacted
+            workerPool.awaitTermination(2, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         cache.compact();
     }
 }

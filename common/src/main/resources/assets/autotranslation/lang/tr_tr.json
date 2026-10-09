@@ -89,5 +89,16 @@
   "text.autoconfig.autotranslation.option.turkish.maxRetries": "En çok yeniden deneme",
   "text.autoconfig.autotranslation.option.turkish.queueSize": "Kuyruk üst sınırı",
   "text.autoconfig.autotranslation.option.turkish.cacheMaxEntries": "Önbellek üst sınırı",
-  "text.autoconfig.autotranslation.option.turkish.temperature": "Model sıcaklığı"
+  "text.autoconfig.autotranslation.option.turkish.temperature": "Model sıcaklığı",
+  "autotranslation.gui.service": "Hizmet",
+  "autotranslation.gui.service.auto": "Otomatik (anahtara göre; anahtar yoksa Google Çeviri)",
+  "autotranslation.gui.service.google-free": "Google Çeviri (ücretsiz, anahtarsız)",
+  "autotranslation.gui.service.gemini": "Google Gemini (ücretsiz anahtar, önerilen)",
+  "autotranslation.gui.service.groq": "Groq (ücretsiz anahtar)",
+  "autotranslation.gui.service.openrouter": "OpenRouter (ücretsiz modeller)",
+  "autotranslation.gui.service.ollama": "Ollama (bilgisayarınızda, ücretsiz)",
+  "autotranslation.gui.service.custom": "Özel (aşağıdaki adres ve model)",
+  "autotranslation.gui.get_key": "Ücretsiz anahtar al",
+  "autotranslation.gui.status.service": "Kullanılan hizmet: %s · model %s · en çok %s istek/dk",
+  "autotranslation.gui.service.mistral": "Mistral (ücretsiz anahtar, telefon doğrulaması)"
 }

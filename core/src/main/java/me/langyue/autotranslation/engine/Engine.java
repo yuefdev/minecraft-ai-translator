@@ -72,6 +72,8 @@ public final class Engine {
     private final TranslationCache cache;
     private final SecretStore secretStore;
     private final OpenAiCompatibleProvider provider;
+    private final me.langyue.autotranslation.core.provider.GoogleFreeProvider googleFree;
+    private volatile me.langyue.autotranslation.core.provider.ProviderSelection selection;
     private final TranslationService service;
     private final ExecutorService io;
     private volatile OpenAiSettings openAi = OpenAiSettings.defaults();
@@ -108,6 +110,7 @@ public final class Engine {
         corrections.load();
         glossaryStore = new GlossaryStore(platform.dataDir().resolve("glossary.json"));
         glossary.replaceTerms(glossaryStore.load());
+        selection = select();
         openAi = buildOpenAiSettings();
         provider = new OpenAiCompatibleProvider(new java.util.function.Supplier<OpenAiSettings>() {
             @Override
@@ -115,12 +118,23 @@ public final class Engine {
                 return openAi;
             }
         });
+        googleFree = new me.langyue.autotranslation.core.provider.GoogleFreeProvider(new java.util.function.Supplier<String>() {
+            @Override
+            public String get() {
+                return selection.baseUrl();
+            }
+        }, new java.util.function.IntSupplier() {
+            @Override
+            public int getAsInt() {
+                return Math.max(5, Math.min(300, Engine.this.settings.timeoutSeconds)) * 1000;
+            }
+        });
         service = TranslationService.builder()
                 .settings(buildServiceSettings())
                 .provider(new java.util.function.Supplier<me.langyue.autotranslation.core.provider.TranslationProvider>() {
                     @Override
                     public me.langyue.autotranslation.core.provider.TranslationProvider get() {
-                        return provider;
+                        return activeProvider();
                     }
                 })
                 .cache(cache)
@@ -140,6 +154,7 @@ public final class Engine {
                     }
                 })
                 .workers(2)
+                .coalesceShortTexts(true)
                 .build();
         CoreLog.info("Translation engine ready (cache: " + cache.size() + " entries, provider configured: "
                 + provider.isConfigured() + ")");
@@ -175,8 +190,23 @@ public final class Engine {
         return provider;
     }
 
+    /** The service that translations are sent to now (see {@link #selection()}). */
+    public me.langyue.autotranslation.core.provider.TranslationProvider activeProvider() {
+        return selection.usesKeylessMachineTranslation() ? googleFree : provider;
+    }
+
+    /** Which service, address and model are in use, after "auto" and the presets were worked out. */
+    public me.langyue.autotranslation.core.provider.ProviderSelection selection() {
+        return selection;
+    }
+
+    private me.langyue.autotranslation.core.provider.ProviderSelection select() {
+        return me.langyue.autotranslation.core.provider.ProviderSelection.resolve(settings.provider, apiKey,
+                settings.endpoint, settings.model, Math.max(1, Math.min(6000, settings.requestsPerMinute)));
+    }
+
     public boolean providerConfigured() {
-        return provider.isConfigured();
+        return activeProvider().isConfigured();
     }
 
     public GameLanguageIndex gameIndex() {
@@ -269,6 +299,7 @@ public final class Engine {
     /** Re-reads the settings; call after the user changed them and when the language changed. */
     public void applyConfig() {
         CoreLog.setDebug(settings.debug);
+        selection = select();
         openAi = buildOpenAiSettings();
         service.updateSettings(buildServiceSettings());
         service.setAnalyzer(buildAnalyzer());
@@ -361,7 +392,8 @@ public final class Engine {
 
     private OpenAiSettings buildOpenAiSettings() {
         int timeout = Math.max(5, Math.min(300, settings.timeoutSeconds)) * 1000;
-        return new OpenAiSettings(settings.endpoint, settings.model, apiKey, 10000, timeout, settings.temperature, 4096, true);
+        return new OpenAiSettings(selection.baseUrl(), selection.model(), apiKey, 10000, timeout, selection.sendTemperature() ? settings.temperature : Double.NaN, 8192, true,
+                selection.extraParameters(), selection.fallbackModels());
     }
 
     private TranslationService.Settings buildServiceSettings() {
@@ -369,12 +401,12 @@ public final class Engine {
                 settings.enabled,
                 LanguageProfile.of(platform.languageCode()),
                 Math.max(16, Math.min(5000, settings.queueSize)),
-                Math.max(1, Math.min(6000, settings.requestsPerMinute)),
+                selection.requestsPerMinute(),
                 Math.max(5, Math.min(300, settings.timeoutSeconds)) * 1000,
                 Math.max(0, Math.min(5, settings.maxRetries)),
                 1500,
-                3000,
-                24,
+                selection.maxBatchChars(),
+                selection.maxSegmentsPerBatch(),
                 10 * 60000L,
                 5,
                 60000L,

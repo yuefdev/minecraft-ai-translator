@@ -548,4 +548,83 @@ class ServiceTest {
         assertNull(service.validateCorrection("Of course not", "Elbette hayır", MaskProfile.PLAIN),
                 "a user's own wording is trusted");
     }
+
+    // ------------------------------------------------------------------------------------------ coalescing
+
+    private static final String[] SHORT_TEXTS = {
+            "Collect iron ingots", "Collect gold ingots", "Smelt copper ore", "Craft a diamond pickaxe",
+            "Plant oak saplings", "Mine redstone dust"};
+
+    @Test
+    void shortTextsAskedForTogetherShareOneProviderCall() throws Exception {
+        FakeProvider provider = FakeProvider.prefixing();
+        service = builder(dir, provider).workers(1).coalesceShortTexts(true).build();
+        List<CompletableFuture<Result>> done = new ArrayList<>();
+        for (int i = 0; i < SHORT_TEXTS.length; i++) {
+            CompletableFuture<Result> f = new CompletableFuture<>();
+            assertEquals(State.PENDING, service.lookup(plain("item:" + i, SHORT_TEXTS[i]), f::complete).state());
+            done.add(f);
+        }
+        for (int i = 0; i < SHORT_TEXTS.length; i++) {
+            assertEquals("TR| " + SHORT_TEXTS[i], text(done.get(i).get(10, TimeUnit.SECONDS), 0), "each text gets its own answer");
+        }
+        assertEquals(1, provider.calls.get(), "six short texts asked for at once need one request");
+        assertEquals(SHORT_TEXTS.length, provider.requests.get(0).segments().size());
+        assertTrue(provider.requests.get(0).context().contentType().contains("several independent texts"),
+                "a merged request does not pretend the texts belong together: " + provider.requests.get(0).context());
+        assertEquals("", provider.requests.get(0).context().contextBefore());
+    }
+
+    @Test
+    void mergingRespectsTheSegmentLimitAndLeavesLongTextsAlone() throws Exception {
+        FakeProvider provider = FakeProvider.prefixing();
+        TranslationService.Settings base = settings();
+        TranslationService.Settings small = new TranslationService.Settings(base.enabled(), base.target(), base.queueCapacity(),
+                base.requestsPerMinute(), base.callTimeoutMillis(), base.maxRetries(), base.retryBaseDelayMillis(),
+                base.maxBatchChars(), 4, base.failureCooldownMillis(), base.breakerThreshold(), base.breakerPauseMillis(),
+                base.glossaryTermLimit());
+        service = builder(dir, provider).settings(small).workers(1).coalesceShortTexts(true).build();
+        StringBuilder longText = new StringBuilder();
+        while (longText.length() < 600) longText.append("Travel to the far lands and bring back what you find there. ");
+        List<CompletableFuture<Result>> done = new ArrayList<>();
+        CompletableFuture<Result> longDone = new CompletableFuture<>();
+        service.lookup(plain("quest:long", longText.toString().trim()), longDone::complete);
+        for (int i = 0; i < SHORT_TEXTS.length; i++) {
+            CompletableFuture<Result> f = new CompletableFuture<>();
+            service.lookup(plain("item:" + i, SHORT_TEXTS[i]), f::complete);
+            done.add(f);
+        }
+        assertTrue(text(longDone.get(10, TimeUnit.SECONDS), 0).startsWith("TR| Travel"));
+        for (int i = 0; i < SHORT_TEXTS.length; i++) {
+            assertEquals("TR| " + SHORT_TEXTS[i], text(done.get(i).get(10, TimeUnit.SECONDS), 0));
+        }
+        for (var request : provider.requests) {
+            assertTrue(request.segments().size() <= 4, "segment limit per request: " + request.segments().size());
+            if (request.segments().get(0).startsWith("Travel")) {
+                assertEquals(1, request.segments().size(), "a long text is never merged with others");
+            }
+        }
+        assertTrue(provider.calls.get() >= 3, "1 long + at least 2 merged requests for 6 short texts with limit 4");
+    }
+
+    @Test
+    void aFailedMergedRequestLeavesEveryTextInEnglishAndReportsTheError() throws Exception {
+        FakeProvider provider = new FakeProvider((req, n) -> {
+            throw new ProviderException(ProviderException.Kind.AUTH, "Authentication failed (HTTP 401)");
+        });
+        service = builder(dir, provider).workers(1).coalesceShortTexts(true).build();
+        List<CompletableFuture<Result>> done = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            CompletableFuture<Result> f = new CompletableFuture<>();
+            service.lookup(plain("item:" + i, SHORT_TEXTS[i]), f::complete);
+            done.add(f);
+        }
+        for (CompletableFuture<Result> f : done) {
+            Result r = f.get(10, TimeUnit.SECONDS);
+            assertNull(r.segments().get(0).translation(), "the original text stays");
+            assertTrue(r.degraded());
+        }
+        assertEquals(1, provider.calls.get(), "authentication errors are not retried");
+        assertTrue(service.stats().lastError().contains("401"));
+    }
 }

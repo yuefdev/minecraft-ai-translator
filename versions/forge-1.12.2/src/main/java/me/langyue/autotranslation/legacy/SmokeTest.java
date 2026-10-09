@@ -78,6 +78,7 @@ public final class SmokeTest {
         settings.translateBooks = true;
         settings.translateGeneric = true;
         settings.showOriginal = false;
+        settings.provider = "custom"; // the fake endpoint below, whatever the key looks like
         settings.endpoint = "http://127.0.0.1:" + server.port() + "/v1";
         settings.model = "smoke-model";
         settings.requestsPerMinute = 6000;

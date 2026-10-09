@@ -46,6 +46,8 @@ public final class TranslationRuntime {
     private static volatile GameLanguageIndex gameIndex = GameLanguageIndex.empty();
     private static final Glossary GLOSSARY = new Glossary();
     private static OpenAiCompatibleProvider provider;
+    private static me.langyue.autotranslation.core.provider.GoogleFreeProvider googleFree;
+    private static volatile me.langyue.autotranslation.core.provider.ProviderSelection selection;
     private static GlossaryStore glossaryStore;
     private static CorrectionStore corrections;
     private static TranslationCache cache;
@@ -84,12 +86,15 @@ public final class TranslationRuntime {
         corrections.load();
         glossaryStore = new GlossaryStore(AutoTranslation.ROOT.resolve("glossary.json"));
         GLOSSARY.replaceTerms(glossaryStore.load());
+        selection = select();
         openAi = buildOpenAiSettings();
         provider = new OpenAiCompatibleProvider(() -> openAi);
+        googleFree = new me.langyue.autotranslation.core.provider.GoogleFreeProvider(() -> selection.baseUrl(),
+                () -> Math.max(5, Math.min(300, AutoTranslation.CONFIG.turkish.timeoutSeconds)) * 1000);
 
         service = TranslationService.builder()
                 .settings(buildServiceSettings())
-                .provider(() -> provider)
+                .provider(TranslationRuntime::provider)
                 .cache(cache)
                 .corrections(corrections)
                 .glossary(GLOSSARY)
@@ -97,6 +102,7 @@ public final class TranslationRuntime {
                 .analyzer(buildAnalyzer())
                 .callbackExecutor(TranslationRuntime::runOnClientThread)
                 .workers(2)
+                .coalesceShortTexts(true)
                 .build();
 
         ClientTickEvent.CLIENT_POST.register(TranslationRuntime::tick);
@@ -104,7 +110,7 @@ public final class TranslationRuntime {
             me.langyue.autotranslation.smoke.SmokeTest.register();
         }
         AutoTranslation.LOGGER.info("Translation pipeline ready (cache: {} entries, provider configured: {})",
-                cache.size(), provider.isConfigured());
+                cache.size(), provider().isConfigured());
     }
 
     // ----------------------------------------------------------------------------------------- accessors
@@ -113,8 +119,20 @@ public final class TranslationRuntime {
         return service;
     }
 
-    public static OpenAiCompatibleProvider provider() {
-        return provider;
+    /** The service translations are sent to now (keyless Google, a free AI preset or the custom address). */
+    public static me.langyue.autotranslation.core.provider.TranslationProvider provider() {
+        return selection != null && selection.usesKeylessMachineTranslation() ? googleFree : provider;
+    }
+
+    /** Which service, address and model are in use, after "auto" and the presets were worked out. */
+    public static me.langyue.autotranslation.core.provider.ProviderSelection selection() {
+        return selection;
+    }
+
+    private static me.langyue.autotranslation.core.provider.ProviderSelection select() {
+        Config.Turkish t = AutoTranslation.CONFIG.turkish;
+        return me.langyue.autotranslation.core.provider.ProviderSelection.resolve(t.provider, apiKey, t.endpoint, t.model,
+                Math.max(1, Math.min(6000, t.requestsPerMinute)));
     }
 
     public static Glossary glossary() {
@@ -134,7 +152,7 @@ public final class TranslationRuntime {
     }
 
     public static boolean providerConfigured() {
-        return provider != null && provider.isConfigured();
+        return provider != null && provider().isConfigured();
     }
 
     /** Whether new-style (OpenAI compatible) translation is selected instead of the legacy Google engine. */
@@ -223,6 +241,7 @@ public final class TranslationRuntime {
     public static void applyConfig() {
         if (service == null) return;
         CoreLog.setDebug(AutoTranslation.CONFIG.debug);
+        selection = select();
         openAi = buildOpenAiSettings();
         service.updateSettings(buildServiceSettings());
         service.setAnalyzer(buildAnalyzer());
@@ -309,7 +328,8 @@ public final class TranslationRuntime {
     private static OpenAiSettings buildOpenAiSettings() {
         Config.Turkish t = AutoTranslation.CONFIG.turkish;
         int timeout = Math.max(5, Math.min(300, t.timeoutSeconds)) * 1000;
-        return new OpenAiSettings(t.endpoint, t.model, apiKey, 10_000, timeout, t.temperature, 4096, true);
+        return new OpenAiSettings(selection.baseUrl(), selection.model(), apiKey, 10_000, timeout, selection.sendTemperature() ? t.temperature : Double.NaN, 8192, true,
+                selection.extraParameters(), selection.fallbackModels());
     }
 
     private static TranslationService.Settings buildServiceSettings() {
@@ -319,12 +339,12 @@ public final class TranslationRuntime {
                 t.enabled,
                 target,
                 Math.max(16, Math.min(5000, t.queueSize)),
-                Math.max(1, Math.min(6000, t.requestsPerMinute)),
+                selection.requestsPerMinute(),
                 Math.max(5, Math.min(300, t.timeoutSeconds)) * 1000,
                 Math.max(0, Math.min(5, t.maxRetries)),
                 1_500,
-                3_000,
-                24,
+                selection.maxBatchChars(),
+                selection.maxSegmentsPerBatch(),
                 10 * 60_000L,
                 5,
                 60_000L,

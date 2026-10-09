@@ -6,6 +6,7 @@ import me.langyue.autotranslation.core.cache.CorrectionStore;
 import me.langyue.autotranslation.core.lang.LanguageProfile;
 import me.langyue.autotranslation.core.mask.MaskProfile;
 import me.langyue.autotranslation.core.provider.ProviderException;
+import me.langyue.autotranslation.core.provider.ProviderPreset;
 import me.langyue.autotranslation.core.provider.ProviderRequest;
 import me.langyue.autotranslation.core.provider.TranslationContext;
 import me.langyue.autotranslation.core.service.Types;
@@ -67,6 +68,7 @@ public class TranslatorSettingsScreen extends Screen {
     private boolean showOriginal = settings.showOriginal;
     private boolean pauseEditing = settings.pauseWhileEditingQuests;
     private boolean bulk = settings.bulkLanguageFiles;
+    private String service = settings.provider == null ? ProviderPreset.AUTO : settings.provider;
     private String endpoint = settings.endpoint;
     private String model = settings.model;
     private String newApiKey = "";
@@ -149,8 +151,21 @@ public class TranslatorSettingsScreen extends Screen {
                 .bounds(left, y + 28, CONTENT_WIDTH, 20).build());
     }
 
+    /** Top of the first text field of the provider tab (the service selector sits above it). */
+    private static final int PROVIDER_FIELDS_TOP = 82;
+
     private void initProvider(int left) {
-        int y = 58;
+        List<String> ids = ProviderPreset.ids();
+        CycleButton<String> serviceButton = CycleButton.<String>builder(id -> Component.translatable("autotranslation.gui.service." + id))
+                .withValues(ids)
+                .withInitialValue(ids.contains(service) ? service : ProviderPreset.AUTO)
+                .create(left, 54, CONTENT_WIDTH, 20, Component.translatable("autotranslation.gui.service"), (b, value) -> {
+                    service = value;
+                    testResult = "";
+                    rebuildWidgets();
+                });
+        addRenderableWidget(serviceButton);
+        int y = PROVIDER_FIELDS_TOP;
         int labelWidth = 110;
         int fieldX = left + labelWidth;
         int fieldWidth = CONTENT_WIDTH - labelWidth;
@@ -166,7 +181,26 @@ public class TranslatorSettingsScreen extends Screen {
         field(fieldX, y += 24, fieldWidth, timeoutSeconds, 4, v -> timeoutSeconds = v, "autotranslation.gui.timeout");
         field(fieldX, y += 24, fieldWidth, maxRetries, 2, v -> maxRetries = v, "autotranslation.gui.retries");
         addRenderableWidget(Button.builder(Component.translatable("autotranslation.gui.test"), b -> runConnectionTest())
-                .bounds(left, y + 28, CONTENT_WIDTH, 20).build());
+                .bounds(left, y + 28, CONTENT_WIDTH / 2 - 2, 20).build());
+        String keyUrl = keyUrlFor(service);
+        Button getKey = Button.builder(Component.translatable("autotranslation.gui.get_key"), b -> openLink(keyUrl))
+                .bounds(left + CONTENT_WIDTH / 2 + 2, y + 28, CONTENT_WIDTH / 2 - 2, 20).build();
+        getKey.active = !keyUrl.isEmpty();
+        addRenderableWidget(getKey);
+    }
+
+    /** "auto" points to the recommended free AI service (Gemini). */
+    private static String keyUrlFor(String serviceId) {
+        ProviderPreset preset = ProviderPreset.byId(ProviderPreset.AUTO.equals(serviceId) ? ProviderPreset.GEMINI : serviceId);
+        return preset == null ? "" : preset.keyUrl();
+    }
+
+    private void openLink(String url) {
+        if (url.isEmpty()) return;
+        this.minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmLinkScreen(open -> {
+            if (open) net.minecraft.Util.getPlatform().openUri(url);
+            this.minecraft.setScreen(this);
+        }, url, true));
     }
 
     private void initPairs(int left, boolean glossary) {
@@ -281,6 +315,7 @@ public class TranslatorSettingsScreen extends Screen {
         AutoTranslation.CONFIG.appendOriginal = showOriginal;
         settings.pauseWhileEditingQuests = pauseEditing;
         settings.bulkLanguageFiles = bulk;
+        settings.provider = service;
         settings.endpoint = endpoint.strip();
         settings.model = model.strip();
         settings.requestsPerMinute = parse(requestsPerMinute, settings.requestsPerMinute, 1, 6000);
@@ -329,7 +364,7 @@ public class TranslatorSettingsScreen extends Screen {
 
     private void renderProviderLabels(GuiGraphics graphics, int left) {
         String[] labels = {"endpoint", "model", "api_key", "rpm", "timeout", "retries"};
-        int y = 63;
+        int y = PROVIDER_FIELDS_TOP + 5;
         for (String label : labels) {
             graphics.drawString(this.font, Component.translatable("autotranslation.gui." + label), left, y, 0xE0E0E0);
             y += 24;
@@ -349,6 +384,12 @@ public class TranslatorSettingsScreen extends Screen {
         List<Component> lines = new ArrayList<>();
         lines.add(Component.translatable(TranslationRuntime.providerConfigured()
                 ? "autotranslation.gui.status.provider_ok" : "autotranslation.gui.status.provider_missing"));
+        var selection = TranslationRuntime.selection();
+        if (selection != null) {
+            lines.add(Component.translatable("autotranslation.gui.status.service",
+                    Component.translatable("autotranslation.gui.service." + selection.presetId()), selection.model(),
+                    selection.requestsPerMinute()));
+        }
         lines.add(Component.translatable("autotranslation.gui.status.queue", stats.queued(), stats.inFlight()));
         lines.add(Component.translatable("autotranslation.gui.status.results", stats.translatedSegments(), stats.failedSegments()));
         lines.add(Component.translatable("autotranslation.gui.status.cache", stats.cacheSize(), stats.cacheHits()));
