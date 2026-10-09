@@ -1,0 +1,36 @@
+name: Live free services
+
+# Sends a few typical modpack texts through the real pipeline to the keyless Google service and prints the Turkish
+# answers. Informational: Google may block the shared addresses of CI runners (that is reported, not hidden).
+on:
+  push:
+    branches:
+      - 'claude/**'
+    paths:
+      - 'core/src/main/java/me/langyue/autotranslation/core/provider/**'
+      - 'core/src/test/java/me/langyue/autotranslation/core/LiveFreeServicesTest.java'
+      - '.github/workflows/live-free.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        run: git clone --quiet --depth 1 --branch "$GITHUB_REF_NAME" "https://x-access-token:${{ github.token }}@github.com/$GITHUB_REPOSITORY.git" .
+      - name: Translate sample texts with the keyless service
+        continue-on-error: true
+        run: |
+          export JAVA_HOME=$JAVA_HOME_17_X64; export PATH=$JAVA_HOME/bin:$PATH
+          chmod +x gradlew
+          ./gradlew -p core test --tests '*LiveFreeServicesTest*' -Dautotranslation.live=true --no-daemon --console=plain > live.log 2>&1
+          echo "exit=$?" > live.status
+      - name: Result summary
+        run: |
+          echo "##### LIVE FREE SERVICES ($(cat live.status))"
+          grep -E "LIVE \||  -> \|" live.log | cut -c1-300
+          grep -E "FAILED|AssertionFailed|nothing came back" live.log | head -n 5
+          grep -q "exit=0" live.status

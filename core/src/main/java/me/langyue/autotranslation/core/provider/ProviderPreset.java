@@ -88,8 +88,8 @@ public final class ProviderPreset {
      */
     static {
         List<ProviderPreset> all = new ArrayList<ProviderPreset>();
-        all.add(new ProviderPreset(GOOGLE_FREE, Kind.GOOGLE_FREE, "https://translate.googleapis.com/translate_a/single", "gtx",
-                30, false, "", "", 1500, 24, params(), models(), true));
+        all.add(new ProviderPreset(GOOGLE_FREE, Kind.GOOGLE_FREE, "https://translate.googleapis.com/translate_a/t", "gtx",
+                20, false, "", "", 5000, 50, params(), models(), true));
         all.add(new ProviderPreset(GEMINI, Kind.OPENAI_COMPATIBLE, "https://generativelanguage.googleapis.com/v1beta/openai",
                 "gemini-3.5-flash-lite", 10, true, "AIza", "https://aistudio.google.com/apikey", 6000, 48,
                 params("reasoning_effort", "minimal"), models("gemini-3.1-flash-lite"), false));

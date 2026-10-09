@@ -31,9 +31,11 @@ tasks.named("compileTestJava") {
 
 test {
     useJUnitPlatform()
+    // -Dautotranslation.live=true runs the checks against real free services (CI job "Live free services")
+    systemProperty "autotranslation.live", System.getProperty("autotranslation.live", "false")
     testLogging {
         events "passed", "skipped", "failed"
-        showStandardStreams = false
+        showStandardStreams = System.getProperty("autotranslation.live") == "true"
         exceptionFormat = "full"
     }
 }

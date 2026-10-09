@@ -10,6 +10,7 @@ on:
       - '.github/workflows/discover.yml'
       - '.github/workflows/versions.yml'
       - '.github/workflows/prod-1122.yml'
+      - '.github/workflows/live-free.yml'
       - 'versions/**'
       - 'docs/**'
       - '**.md'

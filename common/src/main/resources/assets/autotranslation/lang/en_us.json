@@ -106,7 +106,7 @@
   "text.autoconfig.autotranslation.option.turkish.temperature": "Model temperature",
   "autotranslation.gui.service": "Service",
   "autotranslation.gui.service.auto": "Automatic (by key; Google Translate without a key)",
-  "autotranslation.gui.service.google-free": "Google Translate (free, no key)",
+  "autotranslation.gui.service.google-free": "Google Translate (free, no key, unofficial)",
   "autotranslation.gui.service.gemini": "Google Gemini (free key, recommended)",
   "autotranslation.gui.service.groq": "Groq (free key)",
   "autotranslation.gui.service.openrouter": "OpenRouter (free models)",

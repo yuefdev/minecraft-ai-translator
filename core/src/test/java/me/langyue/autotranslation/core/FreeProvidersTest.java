@@ -109,92 +109,102 @@ class FreeProvidersTest {
 
     // ------------------------------------------------------------------------- keyless machine translation
 
-    /** Answers like translate_a/single?client=gtx: one sentence entry per line, "TR " in front of every line. */
-    private GoogleFreeProvider googleServer(Function<String, String> translate, List<Map<String, String>> calls) throws IOException {
+    /** Answers like translate_a/t?client=gtx: a JSON array with one string per q field, "TR " in front of each. */
+    private GoogleFreeProvider googleServer(Function<List<String>, Object> answer, List<Map<String, String>> calls,
+                                            List<List<String>> bodies) throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/translate_a/single", exchange -> {
+        server.createContext("/translate_a/t", exchange -> {
             Map<String, String> query = new HashMap<>();
             for (String pair : exchange.getRequestURI().getRawQuery().split("&")) {
                 int eq = pair.indexOf('=');
                 query.put(pair.substring(0, eq), URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8));
             }
+            query.put("method", exchange.getRequestMethod());
+            query.put("contentType", exchange.getRequestHeaders().getFirst("Content-Type"));
             calls.add(query);
-            String answer = translate.apply(query.get("q"));
-            if (answer == null) {
-                exchange.sendResponseHeaders(429, -1);
+            List<String> q = new ArrayList<>();
+            for (String pair : new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8).split("&")) {
+                if (pair.startsWith("q=")) q.add(URLDecoder.decode(pair.substring(2), StandardCharsets.UTF_8));
+            }
+            bodies.add(q);
+            Object result = answer.apply(q);
+            if (result instanceof Integer) {
+                if ((Integer) result >= 300 && (Integer) result < 400) exchange.getResponseHeaders().add("Location", "https://www.google.com/sorry/index");
+                exchange.sendResponseHeaders((Integer) result, -1);
                 exchange.close();
                 return;
             }
-            StringBuilder json = new StringBuilder("[[");
-            String[] lines = answer.split("(?<=\n)");
-            for (int i = 0; i < lines.length; i++) {
-                if (i > 0) json.append(',');
-                json.append("[").append(new com.google.gson.Gson().toJson(lines[i])).append(",\"src\",null,null,10]");
-            }
-            json.append("],null,\"en\"]");
-            byte[] bytes = json.toString().getBytes(StandardCharsets.UTF_8);
+            byte[] bytes = result.toString().getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(200, bytes.length);
             exchange.getResponseBody().write(bytes);
             exchange.close();
         });
         server.start();
-        String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/translate_a/single";
+        String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/translate_a/t";
         return new GoogleFreeProvider(() -> url, () -> 5000);
     }
 
-    private static String perLine(String q) {
-        StringBuilder out = new StringBuilder();
-        String[] lines = q.split("\n", -1);
-        for (int i = 0; i < lines.length; i++) {
-            if (i > 0) out.append('\n');
-            out.append("TR ").append(lines[i]);
-        }
-        return out.toString();
+    private static Object prefixAll(List<String> q) {
+        List<String> out = new ArrayList<>();
+        for (String text : q) out.add("TR " + text);
+        return new com.google.gson.Gson().toJson(out);
     }
 
     @Test
-    void shortSegmentsGoAsLinesOfOneRequest() throws Exception {
+    void aBatchGoesAsOnePostWithTheTokensTheEngineKeeps() throws Exception {
         List<Map<String, String>> calls = new CopyOnWriteArrayList<>();
-        GoogleFreeProvider google = googleServer(FreeProvidersTest::perLine, calls);
-        List<String> out = google.translate(request("Collect iron ingots", "[[P0]]Gold[[P1]] ingots", "Open the chest"));
-        assertEquals(List.of("TR Collect iron ingots", "TR [[P0]]Gold[[P1]] ingots", "TR Open the chest"), out);
-        assertEquals(1, calls.size());
+        List<List<String>> bodies = new CopyOnWriteArrayList<>();
+        GoogleFreeProvider google = googleServer(FreeProvidersTest::prefixAll, calls, bodies);
+        List<String> out = google.translate(request("Collect iron ingots", "[[P0]]Gold[[P1]] ingots", "[[R0]]Click[[/R0]] [[R1]]here[[/R1]]"));
+        assertEquals(List.of("TR Collect iron ingots", "TR [[P0]]Gold[[P1]] ingots", "TR [[R0]]Click[[/R0]] [[R1]]here[[/R1]]"), out);
+        assertEquals(1, calls.size(), "one request for the whole batch");
+        assertEquals("POST", calls.get(0).get("method"), "GET requests get captcha redirects; POST does not");
+        assertTrue(calls.get(0).get("contentType").startsWith("application/x-www-form-urlencoded"));
         assertEquals("gtx", calls.get(0).get("client"));
         assertEquals("en", calls.get(0).get("sl"));
         assertEquals("tr", calls.get(0).get("tl"));
-        assertEquals("t", calls.get(0).get("dt"));
+        assertEquals(List.of("Collect iron ingots", "⟦0⟧Gold⟦1⟧ ingots", "⟦R0⟧Click⟦/R0⟧ ⟦R1⟧here⟦/R1⟧"), bodies.get(0),
+                "the engine sees ⟦n⟧ tokens, which it keeps in place");
         assertEquals("google-free@127.0.0.1", google.id());
         assertTrue(google.isConfigured(), "no key needed");
     }
 
     @Test
-    void mergedLinesFallBackToOneRequestPerSegment() throws Exception {
-        List<Map<String, String>> calls = new CopyOnWriteArrayList<>();
-        // the "translation" joins the lines into one sentence: the line count no longer matches
-        GoogleFreeProvider google = googleServer(q -> "TR " + q.replace('\n', ' '), calls);
-        List<String> out = google.translate(request("Collect iron ingots", "Open the chest"));
-        assertEquals(List.of("TR Collect iron ingots", "TR Open the chest"), out);
-        assertEquals(3, calls.size(), "one joined try, then one request per segment");
+    void tokensWithSpacesAddedByTheEngineStillComeBack() throws Exception {
+        GoogleFreeProvider google = googleServer(q -> "[\"TR ⟦ 0 ⟧ Altın ⟦1 ⟧ külçe\"]", new CopyOnWriteArrayList<>(), new CopyOnWriteArrayList<>());
+        assertEquals(List.of("TR [[P0]] Altın [[P1]] külçe"), google.translate(request("[[P0]]Gold[[P1]] ingots")));
     }
 
     @Test
-    void floodProtectionIsReportedAsARateLimitWithAWait() throws Exception {
-        GoogleFreeProvider google = googleServer(q -> null, new CopyOnWriteArrayList<>());
-        ProviderException e = assertThrows(ProviderException.class, () -> google.translate(request("Collect iron ingots")));
-        assertEquals(ProviderException.Kind.RATE_LIMIT, e.kind());
-        assertTrue(e.retryAfterMillis() >= 30_000L);
+    void aMissingAnswerIsAnErrorNotAShiftedResult() throws Exception {
+        GoogleFreeProvider google = googleServer(q -> "[\"TR only one\"]", new CopyOnWriteArrayList<>(), new CopyOnWriteArrayList<>());
+        ProviderException e = assertThrows(ProviderException.class, () -> google.translate(request("Collect iron ingots", "Open the chest")));
+        assertEquals(ProviderException.Kind.BAD_RESPONSE, e.kind());
     }
 
     @Test
-    void unexpectedAnswersAreRejected() {
-        assertThrows(ProviderException.class, () -> GoogleFreeProvider.parse("<html>captcha</html>"));
-        assertThrows(ProviderException.class, () -> GoogleFreeProvider.parse("{}"));
+    void aBlockPausesForLongAndASlowDownIsARateLimit() throws Exception {
+        GoogleFreeProvider blocked = googleServer(q -> 302, new CopyOnWriteArrayList<>(), new CopyOnWriteArrayList<>());
+        ProviderException e = assertThrows(ProviderException.class, () -> blocked.translate(request("Collect iron ingots")));
+        assertEquals(ProviderException.Kind.QUOTA, e.kind(), "a captcha redirect is not worth retrying soon");
+        assertTrue(e.retryAfterMillis() >= 10 * 60_000L);
+        server.stop(0);
+        GoogleFreeProvider slow = googleServer(q -> 429, new CopyOnWriteArrayList<>(), new CopyOnWriteArrayList<>());
+        ProviderException e2 = assertThrows(ProviderException.class, () -> slow.translate(request("Collect iron ingots")));
+        assertEquals(ProviderException.Kind.RATE_LIMIT, e2.kind());
+    }
+
+    @Test
+    void answersAreReadInBothShapesAndBlockPagesAreRecognised() throws Exception {
+        assertEquals(List.of("Demir Kazma", "Elmas Kılıç"), GoogleFreeProvider.parse("[\"Demir Kazma\",\"Elmas Kılıç\"]"));
+        assertEquals(List.of("Demir Kazma", "Elmas Kılıç"), GoogleFreeProvider.parse("[[\"Demir Kazma\",\"en\"],[\"Elmas Kılıç\",\"en\"]]"));
+        ProviderException e = assertThrows(ProviderException.class, () -> GoogleFreeProvider.parse("<html><body>Our systems have detected unusual traffic</body></html>"));
+        assertEquals(ProviderException.Kind.QUOTA, e.kind());
     }
 
     @Test
     void theWholePipelineWorksWithTheKeylessService() throws Exception {
-        List<Map<String, String>> calls = new CopyOnWriteArrayList<>();
-        GoogleFreeProvider google = googleServer(FreeProvidersTest::perLine, calls);
+        GoogleFreeProvider google = googleServer(FreeProvidersTest::prefixAll, new CopyOnWriteArrayList<>(), new CopyOnWriteArrayList<>());
         var cache = new me.langyue.autotranslation.core.cache.TranslationCache(dir.resolve("cache.jsonl"), 1000);
         cache.load();
         var corrections = new me.langyue.autotranslation.core.cache.CorrectionStore(dir.resolve("c.json"));

@@ -92,7 +92,7 @@
   "text.autoconfig.autotranslation.option.turkish.temperature": "Model sıcaklığı",
   "autotranslation.gui.service": "Hizmet",
   "autotranslation.gui.service.auto": "Otomatik (anahtara göre; anahtar yoksa Google Çeviri)",
-  "autotranslation.gui.service.google-free": "Google Çeviri (ücretsiz, anahtarsız)",
+  "autotranslation.gui.service.google-free": "Google Çeviri (ücretsiz, anahtarsız, resmi olmayan)",
   "autotranslation.gui.service.gemini": "Google Gemini (ücretsiz anahtar, önerilen)",
   "autotranslation.gui.service.groq": "Groq (ücretsiz anahtar)",
   "autotranslation.gui.service.openrouter": "OpenRouter (ücretsiz modeller)",

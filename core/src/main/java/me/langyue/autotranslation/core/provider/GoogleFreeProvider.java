@@ -3,7 +3,6 @@ package me.langyue.autotranslation.core.provider;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import me.langyue.autotranslation.core.util.Compat;
-import me.langyue.autotranslation.core.util.CoreLog;
 import me.langyue.autotranslation.core.util.Redactor;
 
 import java.io.ByteArrayOutputStream;
@@ -22,18 +21,23 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 /**
- * Keyless machine translation through Google Translate's public web endpoint ({@code translate_a/single?client=gtx}),
+ * Keyless machine translation through Google Translate's public web endpoint ({@code translate_a/t?client=gtx}),
  * the same service the original AutoTranslation used by default. No account and no key, but also no context, no
- * glossary and no guaranteed availability: it is the free fallback, the AI presets give better Turkish.
+ * glossary and no guarantee: the endpoint is unofficial (Google's robots.txt excludes it) and Google blocks addresses
+ * that send too much. It is the zero-setup fallback; the free AI presets give better and more reliable Turkish.
  *
- * <p>Several short segments are sent as lines of one request; if the answer does not come back with the same number
- * of lines, each segment is sent on its own. Placeholder tokens ({@code [[P0]]}) usually survive; whatever does not
- * is caught by the usual validation, and the original text is shown instead.
+ * <p>All segments of a batch go in one POST as repeated {@code q} fields; the answer is a JSON array of strings in
+ * the same order. The masker's tokens are sent as {@code ⟦0⟧}, {@code ⟦R0⟧}…{@code ⟦/R0⟧}, which this engine keeps
+ * in place (tested: {@code [[P0]]}-style brackets are not guaranteed). Whatever still breaks is caught by the usual
+ * validation, and the original text is shown instead.
  */
 public final class GoogleFreeProvider implements TranslationProvider {
-    private static final int MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
-    /** Longest text sent in one request (characters before URL encoding). */
-    public static final int MAX_REQUEST_CHARS = 1800;
+    private static final int MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
+    /** A block (captcha page) usually lasts minutes to hours: ask again after this long. */
+    static final long BLOCK_PAUSE_MILLIS = 30 * 60_000L;
+
+    private static final java.util.regex.Pattern OUR_TOKEN = java.util.regex.Pattern.compile("\\[\\[\\s*(/?)\\s*([PR])\\s*(\\d+)\\s*]]");
+    private static final java.util.regex.Pattern MT_TOKEN = java.util.regex.Pattern.compile("⟦\\s*(/?)\\s*(R?)\\s*(\\d+)\\s*⟧");
 
     private final Supplier<String> endpoint;
     private final IntSupplier timeoutMillis;
@@ -62,41 +66,55 @@ public final class GoogleFreeProvider implements TranslationProvider {
     @Override
     public List<String> translate(ProviderRequest request) throws ProviderException {
         List<String> segments = request.segments();
-        String target = request.target().providerCode();
-        List<String> result = new ArrayList<String>(segments.size());
-        if (segments.size() > 1 && canJoin(segments)) {
-            StringBuilder joined = new StringBuilder();
-            for (int i = 0; i < segments.size(); i++) {
-                if (i > 0) joined.append('\n');
-                joined.append(segments.get(i));
+        StringBuilder form = new StringBuilder();
+        try {
+            for (String segment : segments) {
+                if (form.length() > 0) form.append('&');
+                form.append("q=").append(URLEncoder.encode(toEngineTokens(segment), "UTF-8"));
             }
-            String answer = call(joined.toString(), target);
-            String[] lines = answer.split("\n", -1);
-            if (lines.length == segments.size()) {
-                for (String line : lines) result.add(line.trim());
-                return result;
-            }
-            CoreLog.debug("Machine translation merged or split lines (" + lines.length + " for " + segments.size()
-                    + "); translating the segments one by one");
+        } catch (UnsupportedEncodingException e) {
+            throw new ProviderException(ProviderException.Kind.BAD_REQUEST, "UTF-8 is not supported");
         }
-        for (String segment : segments) result.add(call(segment, target).trim());
+        List<String> answers = parse(post(form.toString(), request.target().providerCode()));
+        if (answers.size() != segments.size()) {
+            throw new ProviderException(ProviderException.Kind.BAD_RESPONSE,
+                    "Google Translate returned " + answers.size() + " texts for " + segments.size());
+        }
+        List<String> result = new ArrayList<String>(answers.size());
+        for (String answer : answers) result.add(fromEngineTokens(answer));
         return result;
     }
 
-    private static boolean canJoin(List<String> segments) {
-        int chars = 0;
-        for (String s : segments) {
-            if (s.indexOf('\n') >= 0 || s.indexOf('\r') >= 0) return false;
-            chars += s.length() + 1;
+    /** {@code [[P0]]} to {@code ⟦0⟧}, {@code [[R1]]} to {@code ⟦R1⟧}, {@code [[/R1]]} to {@code ⟦/R1⟧}. */
+    static String toEngineTokens(String text) {
+        java.util.regex.Matcher m = OUR_TOKEN.matcher(text);
+        StringBuffer out = new StringBuffer();
+        while (m.find()) {
+            String kind = m.group(2).equals("P") ? "" : "R";
+            m.appendReplacement(out, java.util.regex.Matcher.quoteReplacement("⟦" + m.group(1) + kind + m.group(3) + "⟧"));
         }
-        return chars <= MAX_REQUEST_CHARS;
+        m.appendTail(out);
+        return out.toString();
     }
 
-    private String call(String text, String target) throws ProviderException {
+    static String fromEngineTokens(String text) {
+        java.util.regex.Matcher m = MT_TOKEN.matcher(text);
+        StringBuffer out = new StringBuffer();
+        while (m.find()) {
+            String kind = m.group(2).isEmpty() ? "P" : "R";
+            m.appendReplacement(out, java.util.regex.Matcher.quoteReplacement("[[" + m.group(1) + kind + m.group(3) + "]]"));
+        }
+        m.appendTail(out);
+        return out.toString().trim();
+    }
+
+    private String post(String form, String target) throws ProviderException {
         String base = endpoint.get();
+        byte[] body;
         String url;
         try {
-            url = base + "?client=gtx&dt=t&sl=en&tl=" + URLEncoder.encode(target, "UTF-8") + "&q=" + URLEncoder.encode(text, "UTF-8");
+            body = form.getBytes("UTF-8");
+            url = base + "?client=gtx&sl=en&tl=" + URLEncoder.encode(target, "UTF-8");
         } catch (UnsupportedEncodingException e) {
             throw new ProviderException(ProviderException.Kind.BAD_REQUEST, "UTF-8 is not supported");
         }
@@ -104,17 +122,27 @@ public final class GoogleFreeProvider implements TranslationProvider {
         try {
             connection = (HttpURLConnection) new URL(url).openConnection();
             connection.setInstanceFollowRedirects(false);
-            connection.setRequestMethod("GET");
+            connection.setRequestMethod("POST");
             int timeout = Math.max(5000, timeoutMillis.getAsInt());
             connection.setConnectTimeout(Math.min(10000, timeout));
             connection.setReadTimeout(timeout);
+            connection.setDoOutput(true);
+            connection.setFixedLengthStreamingMode(body.length);
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");
             connection.setRequestProperty("Accept", "application/json");
             connection.setRequestProperty("User-Agent", "Mozilla/5.0 (AutoTranslation Minecraft mod)");
+            try (java.io.OutputStream out = connection.getOutputStream()) {
+                out.write(body);
+            }
             int status = connection.getResponseCode();
-            if (status == 429 || status == 403 || (status >= 300 && status < 400)) {
-                // Google answers floods from one address with 429 (or a captcha page): back off for a while
+            if (status >= 300 && status < 400 || status == 403) {
+                // a redirect to google.com/sorry (captcha): this address is blocked for a while
+                throw new ProviderException(ProviderException.Kind.QUOTA,
+                        "Google Translate is temporarily blocking requests from this address (HTTP " + status + ")", BLOCK_PAUSE_MILLIS);
+            }
+            if (status == 429) {
                 throw new ProviderException(ProviderException.Kind.RATE_LIMIT,
-                        "Google Translate is limiting requests from this address (HTTP " + status + ")", 60_000L);
+                        "Google Translate asks to slow down (HTTP 429)", 60_000L);
             }
             if (status >= 500) {
                 throw new ProviderException(ProviderException.Kind.SERVER, "Google Translate server error (HTTP " + status + ")");
@@ -122,7 +150,7 @@ public final class GoogleFreeProvider implements TranslationProvider {
             if (status >= 400) {
                 throw new ProviderException(ProviderException.Kind.BAD_REQUEST, "Google Translate refused the request (HTTP " + status + ")");
             }
-            return parse(readBody(connection.getInputStream()));
+            return readBody(connection.getInputStream());
         } catch (SocketTimeoutException e) {
             throw new ProviderException(ProviderException.Kind.TIMEOUT, "Google Translate did not answer in time");
         } catch (UnknownHostException e) {
@@ -136,21 +164,29 @@ public final class GoogleFreeProvider implements TranslationProvider {
         }
     }
 
-    /** {@code [[["Merhaba","Hello",null,null,10],["dünya","world",...]],null,"en",...]}: join the first column. */
-    public static String parse(String body) throws ProviderException {
+    /**
+     * {@code ["Demir Kazma","Elmas Kılıç"]}; with automatic source detection each entry is
+     * {@code ["Demir Kazma","en"]}. A captcha page or anything else is a block, not a translation.
+     */
+    public static List<String> parse(String body) throws ProviderException {
+        JsonArray array;
         try {
             JsonElement root = Compat.parseJson(body);
-            JsonArray sentences = root.getAsJsonArray().get(0).getAsJsonArray();
-            StringBuilder out = new StringBuilder();
-            for (JsonElement sentence : sentences) {
-                if (!sentence.isJsonArray() || sentence.getAsJsonArray().size() == 0) continue;
-                JsonElement translated = sentence.getAsJsonArray().get(0);
-                if (translated != null && translated.isJsonPrimitive()) out.append(translated.getAsString());
+            array = root.getAsJsonArray();
+        } catch (RuntimeException e) {
+            throw new ProviderException(ProviderException.Kind.QUOTA,
+                    "Google Translate answered with something other than a translation (probably a block page)", BLOCK_PAUSE_MILLIS);
+        }
+        List<String> out = new ArrayList<String>(array.size());
+        try {
+            for (JsonElement entry : array) {
+                if (entry.isJsonArray()) entry = entry.getAsJsonArray().get(0);
+                out.add(entry.getAsString());
             }
-            return out.toString();
         } catch (RuntimeException e) {
             throw new ProviderException(ProviderException.Kind.BAD_RESPONSE, "Google Translate sent an unexpected answer");
         }
+        return out;
     }
 
     private static String readBody(InputStream in) throws IOException {
