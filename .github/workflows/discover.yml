@@ -287,3 +287,20 @@ jobs:
           done
           curl -fsSL --max-time 30 https://maven.architectury.dev/me/shedaniel/architectury-forge/maven-metadata.xml | grep -oE "<version>1\.[0-9]+\.[0-9]+</version>" | sed -E 's/<[^>]+>//g' | sort -V | tail -n 3 | sed 's/^/  architectury-forge (1.16): /'
           curl -fsSL --max-time 30 https://maven.architectury.dev/dev/architectury/architectury-forge/maven-metadata.xml | grep -oE "<version>(4|6)\.[0-9]+\.[0-9]+</version>" | sed -E 's/<[^>]+>//g' | sort -V | awk -F. '{last[$1]=$0} END {for (k in last) print "  architectury-forge " k ".x latest: " last[k]}'
+
+  item-filters-files:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Item Filters files for 1.16.5 / 1.18.2 / 1.19.2 (Forge) on CurseForge
+        run: |
+          curl -fsSL --max-time 40 "https://api.cfwidget.com/minecraft/mc-mods/item-filters" -o w.json
+          python3 - <<'PY'
+          import json
+          w = json.load(open("w.json"))
+          print("project id", w.get("id"), "|", w.get("title"))
+          for mc in ("1.16.5", "1.18.2", "1.19.2"):
+              fs = [f for f in w.get("files", []) if mc in f.get("versions", []) and ("Forge" in f.get("versions", []) or "forge" in f["name"].lower())]
+              fs.sort(key=lambda f: f.get("uploaded_at", ""))
+              for f in fs[-2:]:
+                  print(mc, "file", f["id"], f["name"], f.get("uploaded_at"), f.get("type"), [v for v in f.get("versions", []) if not v[0].isdigit()])
+          PY
