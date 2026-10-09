@@ -1,0 +1,11 @@
+pluginManagement {
+    repositories {
+        maven {
+            name = "GTNH Maven"
+            url = "https://nexus.gtnewhorizons.com/repository/public/"
+        }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+rootProject.name = "autotranslation-forge-1.12.2"

@@ -1,0 +1,78 @@
+plugins {
+    id "java"
+    id "com.gtnewhorizons.retrofuturagradle" version "2.0.6"
+}
+
+group = "me.langyue"
+version = "${mod_version}+mc1.12.2-forge"
+base {
+    archivesName = "AutoTranslation"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
+
+minecraft {
+    mcVersion = "1.12.2"
+    username = "SmokeTester"
+    // the coremod is on the class path in the development environment, so it has to be announced explicitly
+    extraRunJvmArguments.add("-Dfml.coreMods.load=me.langyue.autotranslation.legacy.CorePlugin")
+    if (project.hasProperty("smokeRun")) {
+        extraRunJvmArguments.add("-Dautotranslation.smoketest=true")
+        extraRunJvmArguments.add("-Dautotranslation.smoketest.output=" + file("build/smoke/result.json").absolutePath)
+    }
+}
+
+repositories {
+    maven {
+        url = "https://cursemaven.com"
+        content {
+            includeGroup "curse.maven"
+        }
+    }
+    maven { url = "https://maven.blamejared.com" }
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        // the version independent engine is shared by every Minecraft version
+        java.srcDir "../../core/src/main/java"
+        resources.srcDir "../../core/src/main/resources"
+    }
+}
+
+dependencies {
+    // The optional mods are only touched through bytecode patches and reflection, so nothing is needed to compile.
+    // -PsmokeMods puts them on the runtime classpath of the start-up check.
+    if (project.hasProperty("smokeMods")) {
+        runtimeOnly rfg.deobf("curse.maven:better-questing-238856:2950248")
+        runtimeOnly rfg.deobf("curse.maven:ftb-quests-289412:3156637")
+        runtimeOnly rfg.deobf("curse.maven:ftblib-237167:2985811")
+        runtimeOnly rfg.deobf("curse.maven:item-filters-309674:3003364")
+        runtimeOnly rfg.deobf("curse.maven:patchouli-306770:3162874")
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("mcmod.info") {
+        expand "version": mod_version
+    }
+}
+
+jar {
+    manifest {
+        attributes(
+                "FMLCorePlugin": "me.langyue.autotranslation.legacy.CorePlugin",
+                "FMLCorePluginContainsFMLMod": "true"
+        )
+    }
+}

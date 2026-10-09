@@ -1,0 +1,10 @@
+[
+  {
+    "modid": "autotranslation",
+    "name": "AutoTranslation",
+    "description": "Translates English mod content (BetterQuesting, FTB Quests, Patchouli) into your language through an OpenAI compatible provider. Fork of AutoTranslation by LangYue (AGPL-3.0).",
+    "version": "${version}",
+    "mcversion": "1.12.2",
+    "authorList": ["LangYue (original)", "Turkish pipeline contributors"]
+  }
+]
