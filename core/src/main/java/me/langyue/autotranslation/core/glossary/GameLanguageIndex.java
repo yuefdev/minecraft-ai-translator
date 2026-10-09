@@ -50,7 +50,7 @@ public final class GameLanguageIndex {
         return new GameLanguageIndex(new HashMap<>(result));
     }
 
-    private static boolean isNameKey(String key) {
+    public static boolean isNameKey(String key) {
         for (String prefix : NAME_PREFIXES) {
             if (key.startsWith(prefix)) return true;
         }

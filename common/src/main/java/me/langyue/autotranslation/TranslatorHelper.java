@@ -3,6 +3,8 @@ package me.langyue.autotranslation;
 import me.langyue.autotranslation.resource.ResourceManager;
 import me.langyue.autotranslation.translate.TranslateThreadPool;
 import me.langyue.autotranslation.translate.TranslatorManager;
+import me.langyue.autotranslation.tr.TranslationBridge;
+import me.langyue.autotranslation.tr.TranslationRuntime;
 import net.minecraft.locale.Language;
 
 import java.util.*;
@@ -106,6 +108,10 @@ public class TranslatorHelper {
             // 本 Mod 显示原文的格式，某些 Mod 分词可能会把原文分出去单独显示，所以过滤下
             return false;
         }
+        if (TranslationRuntime.usesPipeline()) {
+            // The OpenAI pipeline decides with language analysis that does not rely on special characters only.
+            return TranslationBridge.needsTranslation(content);
+        }
         if (!enPattern.matcher(content).find()) {
             // 没有英文
             return false;
@@ -186,6 +192,9 @@ public class TranslatorHelper {
      * @return 翻译后的文本, 因为是异步的，可能为空
      */
     public static String translate(String key, String en, boolean appendOriginal, Consumer<String> callback) {
+        if (TranslationRuntime.usesPipeline()) {
+            return TranslationBridge.translateLegacy(key, en, appendOriginal, callback);
+        }
         if (CACHE.containsKey(key)) {
             String translation = append(CACHE.get(key), en, appendOriginal);
             if (callback != null) {
@@ -271,6 +280,7 @@ public class TranslatorHelper {
 
     public static boolean hasCache(String key) {
         if (key == null) return false;
+        if (TranslationRuntime.usesPipeline()) return false;
         return CACHE.containsKey(key);
     }
 }

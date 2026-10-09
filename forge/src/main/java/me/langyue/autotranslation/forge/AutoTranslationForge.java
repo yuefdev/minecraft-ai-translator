@@ -3,8 +3,7 @@ package me.langyue.autotranslation.forge;
 import dev.architectury.platform.forge.EventBuses;
 import me.langyue.autotranslation.AutoTranslation;
 import me.langyue.autotranslation.ScreenTranslationHelper;
-import me.langyue.autotranslation.config.Config;
-import me.shedaniel.autoconfig.AutoConfig;
+import me.langyue.autotranslation.gui.TranslatorSettingsScreen;
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.client.gui.ModListScreen;
 import net.minecraftforge.common.MinecraftForge;
@@ -24,7 +23,7 @@ public class AutoTranslationForge {
         ModLoadingContext.get().registerExtensionPoint(
                 ConfigScreenHandler.ConfigScreenFactory.class,
                 () -> new ConfigScreenHandler.ConfigScreenFactory(
-                        (mc, screen) -> AutoConfig.getConfigScreen(Config.class, screen).get()
+                        (mc, screen) -> new TranslatorSettingsScreen(screen)
                 )
         );
         MinecraftForge.EVENT_BUS.register(ServerStoppingEventHandler.class);

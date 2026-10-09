@@ -3,7 +3,9 @@ package me.langyue.autotranslation.mixin;
 import me.langyue.autotranslation.AutoTranslation;
 import me.langyue.autotranslation.TranslatorHelper;
 import me.langyue.autotranslation.config.Config;
+import me.langyue.autotranslation.core.glossary.GameLanguageIndex;
 import me.langyue.autotranslation.resource.ResourceManager;
+import me.langyue.autotranslation.tr.TranslationRuntime;
 import net.minecraft.client.resources.language.ClientLanguage;
 import net.minecraft.locale.Language;
 import net.minecraft.resources.ResourceLocation;
@@ -39,6 +41,26 @@ public class ClientLanguageMixin {
     @Unique
     private static boolean autoTranslation$ready = false;
 
+    /** English and current-language entries seen while loading, used to learn the game's own Turkish names. */
+    @Unique
+    private static final Map<String, String> autoTranslation$englishCapture = new HashMap<>();
+    @Unique
+    private static final Map<String, String> autoTranslation$targetCapture = new HashMap<>();
+    /** Constant-time membership test for keys without a translation (the multimap's containsValue is linear). */
+    @Unique
+    private static volatile java.util.Set<String> autoTranslation$unknownKeys = java.util.Set.of();
+
+    @Unique
+    private static void autoTranslation$capture(String lang, Map<String, String> entries) {
+        Map<String, String> sink;
+        if (lang.equals(Language.DEFAULT)) sink = autoTranslation$englishCapture;
+        else if (lang.equals(AutoTranslation.getLanguage())) sink = autoTranslation$targetCapture;
+        else return;
+        entries.forEach((k, v) -> {
+            if (GameLanguageIndex.isNameKey(k)) sink.put(k, v);
+        });
+    }
+
     @Inject(method = "loadFrom", at = @At(value = "INVOKE", target = "Ljava/util/List;iterator()Ljava/util/Iterator;", ordinal = 0), locals = LocalCapture.CAPTURE_FAILSOFT)
     private static void loadFromRMixin(net.minecraft.server.packs.resources.ResourceManager resourceManager,
                                        List<String> list, boolean bl, CallbackInfoReturnable<ClientLanguage> cir,
@@ -48,6 +70,9 @@ public class ClientLanguageMixin {
             return;
         }
         ResourceManager.UNKNOWN_KEYS.clear();
+        autoTranslation$englishCapture.clear();
+        autoTranslation$targetCapture.clear();
+        autoTranslation$unknownKeys = java.util.Set.of();
         autoTranslation$ready = false;
         // 自定义循环
         for (String lang : list) {
@@ -68,11 +93,15 @@ public class ClientLanguageMixin {
     @Unique
     private static void autoTranslation$appendFrom(String lang, String namespace, List<Resource> list, Map<String, String> map) {
         if (AutoTranslation.CONFIG.excludedNamespace.stream().anyMatch(s -> Pattern.matches(s, namespace))) {
-            appendFrom(lang, list, map);
+            Map<String, String> excluded = new HashMap<>();
+            appendFrom(lang, list, excluded);
+            map.putAll(excluded);
+            autoTranslation$capture(lang, excluded);
             return;
         }
         Map<String, String> temp = new HashMap<>();
         appendFrom(lang, list, temp);
+        autoTranslation$capture(lang, temp);
         if (lang.equals(Language.DEFAULT)) {
             // 默认语言
             temp.forEach((k, v) -> {
@@ -102,6 +131,10 @@ public class ClientLanguageMixin {
                                             List<String> list, boolean bl, CallbackInfoReturnable<ClientLanguage> cir) {
         if (AutoTranslation.getLanguage().equals(Language.DEFAULT)) return;
         ResourceManager.setLanguage(cir.getReturnValue());
+        TranslationRuntime.onLanguageLoaded(new HashMap<>(autoTranslation$englishCapture), new HashMap<>(autoTranslation$targetCapture));
+        autoTranslation$englishCapture.clear();
+        autoTranslation$targetCapture.clear();
+        autoTranslation$unknownKeys = new java.util.HashSet<>(ResourceManager.UNKNOWN_KEYS.values());
         if (ResourceManager.UNKNOWN_KEYS.isEmpty()) {
             autoTranslation$ready = true;
             return;
@@ -114,6 +147,7 @@ public class ClientLanguageMixin {
             });
         }
         ResourceManager.initResource();
+        autoTranslation$unknownKeys = new java.util.HashSet<>(ResourceManager.UNKNOWN_KEYS.values());
         autoTranslation$ready = true;
     }
 
@@ -123,7 +157,7 @@ public class ClientLanguageMixin {
     @Inject(method = "getOrDefault", at = @At(value = "RETURN"), cancellable = true)
     private void getOrDefaultMixin(String string, String string2, CallbackInfoReturnable<String> cir) {
         if (!autoTranslation$ready) return;
-        if (!ResourceManager.UNKNOWN_KEYS.containsValue(string) && !TranslatorHelper.hasCache(string)) return;
+        if (!autoTranslation$unknownKeys.contains(string) && !TranslatorHelper.hasCache(string)) return;
         String returnValue = cir.getReturnValue();
         if (string.equals(returnValue) && autoTranslation$idPattern.matcher(string).matches()) {
             // TODO 记录这种英文语言文件里都没有的 key

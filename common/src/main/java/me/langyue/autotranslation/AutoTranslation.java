@@ -8,6 +8,7 @@ import me.langyue.autotranslation.command.AutoTranslationCommands;
 import me.langyue.autotranslation.config.Config;
 import me.langyue.autotranslation.resource.ResourceManager;
 import me.langyue.autotranslation.translate.TranslatorManager;
+import me.langyue.autotranslation.tr.TranslationRuntime;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.locale.Language;
@@ -36,6 +37,14 @@ public class AutoTranslation {
         TranslatorHelper.init();
         ResourceManager.init();
         ScreenTranslationHelper.init();
+        TranslationRuntime.init();
+        // optional integrations: the classes below are only loaded when the mod is installed
+        if (TranslationRuntime.isModLoaded("ftbquests")) {
+            me.langyue.autotranslation.tr.ftb.FtbQuestsBootstrap.init();
+        }
+        if (TranslationRuntime.isModLoaded("patchouli")) {
+            me.langyue.autotranslation.tr.patchouli.PatchouliBootstrap.init();
+        }
         KeyMappingRegistry.register(SCREEN_TRANSLATE_KEYMAPPING);
         CommandRegistrationEvent.EVENT.register((dispatcher, dedicated, ignored) -> AutoTranslationCommands.register(dispatcher));
     }

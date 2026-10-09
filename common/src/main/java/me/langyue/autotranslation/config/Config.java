@@ -39,11 +39,68 @@ public class Config implements ConfigData {
     @Comment("英语特征")
     public String enFeature = "([A-Z]?[a-z]{2,}\\s*)+";
 
-    @Comment("您的语言的特征，默认的是中日韩")
-    public String yourLanguageFeature = "[\\u0800-\\u9fa5\\uac00-\\ud7ff]+";
+    @Comment("Hedef dile ait ek ipucu (düzenli ifade). Türkçe ve İngilizce aynı Latin alfabesini kullandığı için tek başına\n"
+            + "karar vermez; yalnızca durak sözcük ve Türkçe harf kanıtlarına ek kanıt olarak sayılır.\n"
+            + "Eski varsayılan (Çince/Japonca/Korece) Türkçe için geçersizdir.")
+    public String yourLanguageFeature = "[çğıöşüÇĞİÖŞÜ]";
 
-    @Comment("翻译引擎，默认 Google，如果未安装其他翻译引擎，请勿修改本项")
-    public String translator = TranslatorManager.DEFAULT_TRANSLATOR;
+    @Comment("Çeviri motoru: OpenAI (OpenAI uyumlu sağlayıcı, önerilen) veya Google (eski, yalnızca genel metinler için)")
+    public String translator = TranslatorManager.OPENAI_TRANSLATOR;
+
+    @Comment("Türkçe çeviri hattı (OpenAI uyumlu sağlayıcı). API anahtarı BURADA TUTULMAZ; ortam değişkeni\n"
+            + "AUTOTRANSLATION_API_KEY veya AutoTranslation/secrets/api-key.txt dosyası kullanılır.")
+    @ConfigEntry.Gui.NoTooltip
+    @ConfigEntry.Gui.TransitiveObject
+    @ConfigEntry.Category("turkish")
+    @ConfigEntry.Gui.PrefixText
+    public Turkish turkish = new Turkish();
+
+    public static class Turkish {
+        @Comment("Otomatik çeviriyi aç/kapat")
+        public boolean enabled = true;
+
+        @Comment("FTB Quests görev, bölüm, hedef ve ödül metinlerini çevir")
+        public boolean translateQuests = true;
+
+        @Comment("Patchouli rehber kitaplarını çevir")
+        public boolean translateBooks = true;
+
+        @Comment("Dil dosyası anahtarlarını, eşya açıklamalarını ve mod arayüz metinlerini çevir")
+        public boolean translateGeneric = true;
+
+        @Comment("Türkçe metnin yanında orijinal İngilizce metni de göster")
+        public boolean showOriginal = false;
+
+        @Comment("Düzenleme modundayken (FTB Quests) çeviri gösterme")
+        public boolean pauseWhileEditingQuests = true;
+
+        @Comment("Başlangıçta tüm çevrilmemiş dil dosyalarını toplu çevir (çok sayıda istek oluşturur ve ücret doğurabilir)")
+        public boolean bulkLanguageFiles = false;
+
+        @Comment("OpenAI uyumlu uç nokta (taban adres), örn. https://api.openai.com/v1 veya http://localhost:11434/v1")
+        public String endpoint = "https://api.openai.com/v1";
+
+        @Comment("Model adı")
+        public String model = "gpt-4o-mini";
+
+        @Comment("Dakikadaki en çok istek sayısı")
+        public int requestsPerMinute = 60;
+
+        @Comment("Tek bir isteğin zaman aşımı (saniye)")
+        public int timeoutSeconds = 45;
+
+        @Comment("Geçici hatalarda en çok yeniden deneme sayısı (sonsuz yeniden deneme yoktur)")
+        public int maxRetries = 2;
+
+        @Comment("Bekleyen çeviri kuyruğunun üst sınırı (değişiklik için yeniden başlatma gerekir)")
+        public int queueSize = 512;
+
+        @Comment("Kalıcı önbellekteki en çok kayıt sayısı")
+        public int cacheMaxEntries = 50000;
+
+        @Comment("Model sıcaklığı (düşük değer tutarlı çeviri verir)")
+        public double temperature = 0.2;
+    }
 
     @Comment("屏幕翻译排除原版屏幕")
     @ConfigEntry.Gui.Tooltip

@@ -45,6 +45,9 @@ public class ScreenTranslationHelper {
         add("dev.ftb.mods.ftbquests.client.gui.RewardTablesScreen");
         add("dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen");
         add(ClothConfigScreen.class.getName());
+        add("me.langyue.autotranslation.gui.");
+        // dedicated integration translates these before layout; generic screen translation would double-translate
+        add("vazkii.patchouli.client.book.gui.");
     }};
 
     private static boolean needSave = false;

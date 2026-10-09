@@ -12,6 +12,7 @@ import me.langyue.autotranslation.AutoTranslation;
 import me.langyue.autotranslation.TranslatorHelper;
 import me.langyue.autotranslation.command.ResourcePathArgument;
 import me.langyue.autotranslation.translate.TranslatorManager;
+import me.langyue.autotranslation.tr.TranslationRuntime;
 import me.langyue.autotranslation.util.FileUtils;
 import net.minecraft.ResourceLocationException;
 import net.minecraft.SharedConstants;
@@ -100,6 +101,11 @@ public class ResourceManager {
         remove.forEach(UNKNOWN_KEYS::remove);
         ResourcePathArgument.addExamples(UNKNOWN_KEYS.keySet());
         loadResource();
+        if (TranslationRuntime.usesPipeline() && !AutoTranslation.CONFIG.turkish.bulkLanguageFiles) {
+            // Texts are translated lazily when they are first displayed instead of translating every
+            // untranslated language file at startup, which would send thousands of requests.
+            return;
+        }
         UNLOAD_KEYS.keySet().forEach(namespace -> {
             Collection<String> keys = UNLOAD_KEYS.get(namespace);
             if (keys.isEmpty()) return;

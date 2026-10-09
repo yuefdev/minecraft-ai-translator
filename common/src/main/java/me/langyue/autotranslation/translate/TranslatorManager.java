@@ -12,8 +12,10 @@ import java.util.function.Supplier;
 public class TranslatorManager {
 
     public static final String DEFAULT_TRANSLATOR = "Google";
+    public static final String OPENAI_TRANSLATOR = "OpenAI";
 
     private static final Map<String, Supplier<ITranslator>> _TRANSLATOR_MAP = new LinkedHashMap<>() {{
+        put(OPENAI_TRANSLATOR, me.langyue.autotranslation.tr.OpenAiLegacyTranslator::new);
         put(DEFAULT_TRANSLATOR, Google::getInstance);
     }};
 
@@ -27,7 +29,8 @@ public class TranslatorManager {
 
     public static void setTranslator(String name) {
         if (!_TRANSLATOR_INSTANCES.containsKey(name)) {
-            ITranslator translator = _TRANSLATOR_MAP.get(name).get();
+            Supplier<ITranslator> supplier = _TRANSLATOR_MAP.get(name);
+            ITranslator translator = supplier == null ? null : supplier.get();
             if (translator == null) {
                 AutoTranslation.LOGGER.error("Unknown translator: {}", name);
                 setTranslator(DEFAULT_TRANSLATOR);
