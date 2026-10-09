@@ -32,10 +32,11 @@ public final class ProviderSelection {
     private final Map<String, String> extraParameters;
     private final java.util.List<String> fallbackModels;
     private final boolean sendTemperature;
+    private final int maxOutputTokens;
 
     private ProviderSelection(String presetId, ProviderPreset.Kind kind, String baseUrl, String model, int requestsPerMinute,
                               int maxBatchChars, int maxSegmentsPerBatch, Map<String, String> extraParameters,
-                              java.util.List<String> fallbackModels, boolean sendTemperature) {
+                              java.util.List<String> fallbackModels, boolean sendTemperature, int maxOutputTokens) {
         this.presetId = presetId;
         this.kind = kind;
         this.baseUrl = baseUrl;
@@ -46,6 +47,7 @@ public final class ProviderSelection {
         this.extraParameters = extraParameters;
         this.fallbackModels = fallbackModels;
         this.sendTemperature = sendTemperature;
+        this.maxOutputTokens = maxOutputTokens;
     }
 
     /**
@@ -72,14 +74,14 @@ public final class ProviderSelection {
         }
         return new ProviderSelection(preset.id(), preset.kind(), preset.baseUrl(), preset.model(),
                 Math.min(rpm, preset.requestsPerMinute()), preset.maxBatchChars(), preset.maxSegmentsPerBatch(),
-                preset.extraParameters(), preset.fallbackModels(), preset.sendTemperature());
+                preset.extraParameters(), preset.fallbackModels(), preset.sendTemperature(), preset.maxOutputTokens());
     }
 
     private static ProviderSelection custom(String endpoint, String model, int rpm) {
         return new ProviderSelection(ProviderPreset.CUSTOM, ProviderPreset.Kind.OPENAI_COMPATIBLE,
                 endpoint == null ? "" : endpoint.trim(), model == null ? "" : model.trim(), rpm,
                 CUSTOM_BATCH_CHARS, CUSTOM_BATCH_SEGMENTS, Collections.<String, String>emptyMap(),
-                Collections.<String>emptyList(), true);
+                Collections.<String>emptyList(), true, 4096);
     }
 
     static boolean isLocal(String endpoint) {
@@ -131,6 +133,10 @@ public final class ProviderSelection {
 
     public boolean sendTemperature() {
         return sendTemperature;
+    }
+
+    public int maxOutputTokens() {
+        return maxOutputTokens;
     }
 
     @Override

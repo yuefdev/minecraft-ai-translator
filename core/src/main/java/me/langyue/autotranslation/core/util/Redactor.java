@@ -15,6 +15,8 @@ public final class Redactor {
     private static final Pattern SK_TOKEN = Pattern.compile("\\b(sk|rk|pk)-[A-Za-z0-9_-]{6,}");
     private static final Pattern AUTH_HEADER = Pattern.compile("(?i)(authorization|x-api-key|api-key)(\"?\\s*[:=]\\s*\"?)[^\\s\",}]+");
     private static final Pattern URL_KEY_PARAM = Pattern.compile("(?i)([?&](?:api[_-]?key|key|token)=)[^&\\s]+");
+    /** Google (AIza..., and the newer "AQ." keys of AI Studio) and Groq (gsk_...) key shapes. */
+    private static final Pattern PROVIDER_KEYS = Pattern.compile("\\b(AIza|AQ\\.|gsk_)[A-Za-z0-9._-]{8,}");
 
     private Redactor() {
     }
@@ -40,6 +42,7 @@ public final class Redactor {
         result = AUTH_HEADER.matcher(result).replaceAll("$1$2****");
         result = URL_KEY_PARAM.matcher(result).replaceAll("$1****");
         result = SK_TOKEN.matcher(result).replaceAll("$1-****");
+        result = PROVIDER_KEYS.matcher(result).replaceAll("$1****");
         return result;
     }
 

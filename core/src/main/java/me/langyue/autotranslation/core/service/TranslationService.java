@@ -390,7 +390,22 @@ public final class TranslationService implements AutoCloseable {
     private final AtomicLong cacheHits = new AtomicLong();
     private final AtomicLong providerCalls = new AtomicLong();
     private final AtomicInteger consecutiveFailures = new AtomicInteger();
-    private volatile long pausedUntil = 0L;
+    /** Pause after repeated failures or a used-up quota, per provider id (another provider may still work). */
+    private final Map<String, Long> pausedUntil = new ConcurrentHashMap<>();
+    /** The subset of those pauses that are a used-up quota. */
+    private final Map<String, Long> quotaUntil = new ConcurrentHashMap<>();
+
+    private long pausedUntil(TranslationProvider provider) {
+        if (provider == null) return 0L;
+        Long until = pausedUntil.get(provider.id());
+        return until == null ? 0L : until;
+    }
+
+    /** Whether this provider's free quota is used up right now (so that a keyless fallback can take over). */
+    public boolean quotaPaused(String providerId) {
+        Long until = providerId == null ? null : quotaUntil.get(providerId);
+        return until != null && until > clock.getAsLong();
+    }
     private volatile String lastError = "";
     private volatile long lastErrorAt = 0L;
 
@@ -448,7 +463,8 @@ public final class TranslationService implements AutoCloseable {
     public void clearFailures() {
         failures.clear();
         readyMemo.clear();
-        pausedUntil = 0L;
+        pausedUntil.clear();
+        quotaUntil.clear();
         consecutiveFailures.set(0);
     }
 
@@ -470,7 +486,7 @@ public final class TranslationService implements AutoCloseable {
     public Stats stats() {
         TranslationProvider provider = providerSupplier.get();
         return new Stats(queue.size(), inFlight.get(), translated.get(), failed.get(), cacheHits.get(),
-                providerCalls.get(), lastError, lastErrorAt, pausedUntil, cache.size());
+                providerCalls.get(), lastError, lastErrorAt, pausedUntil(provider), cache.size());
     }
 
     public boolean providerConfigured() {
@@ -601,8 +617,8 @@ public final class TranslationService implements AutoCloseable {
         if (provider == null || !provider.isConfigured()) {
             return new Result(State.FAILED, fillOriginal(results), false, "provider not configured");
         }
-        if (clock.getAsLong() < pausedUntil) {
-            return new Result(State.FAILED, fillOriginal(results), false, "paused after repeated failures: " + lastError);
+        if (clock.getAsLong() < pausedUntil(provider)) {
+            return new Result(State.FAILED, fillOriginal(results), false, "paused: " + lastError);
         }
 
         StringBuilder jobKey = new StringBuilder(scope).append('|').append(request.profile());
@@ -746,13 +762,13 @@ public final class TranslationService implements AutoCloseable {
     private void runJobs(List<Job> jobs) throws InterruptedException {
         Settings st = settings;
         TranslationProvider provider = providerSupplier.get();
-        if (clock.getAsLong() < pausedUntil) {
-            for (Job job : jobs) failUnresolved(job, "paused after repeated failures");
-            return;
-        }
         if (provider == null || !provider.isConfigured()) {
             recordError("Translation provider is not configured");
             for (Job job : jobs) failUnresolved(job, lastError);
+            return;
+        }
+        if (clock.getAsLong() < pausedUntil(provider)) {
+            for (Job job : jobs) failUnresolved(job, "paused: " + lastError);
             return;
         }
 
@@ -796,12 +812,13 @@ public final class TranslationService implements AutoCloseable {
             if (e.kind() == ProviderException.Kind.QUOTA) {
                 // a free tier's daily allowance: ask again much later, meanwhile cached translations keep working
                 long pause = Math.max(e.retryAfterMillis(), QUOTA_PAUSE_MILLIS);
-                pausedUntil = clock.getAsLong() + pause;
+                pausedUntil.put(provider.id(), clock.getAsLong() + pause);
+                quotaUntil.put(provider.id(), clock.getAsLong() + pause);
                 consecutiveFailures.set(0);
                 CoreLog.warn("Free quota used up; new translations paused for " + pause / 60_000L + " min");
             } else if (e.kind() != ProviderException.Kind.NOT_CONFIGURED) {
                 if (consecutiveFailures.incrementAndGet() >= st.breakerThreshold()) {
-                    pausedUntil = clock.getAsLong() + st.breakerPauseMillis();
+                    pausedUntil.put(provider.id(), clock.getAsLong() + st.breakerPauseMillis());
                     consecutiveFailures.set(0);
                     CoreLog.warn("Translation paused for " + st.breakerPauseMillis() / 1000 + "s after repeated failures");
                 }

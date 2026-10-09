@@ -21,6 +21,9 @@ public class EngineSettings {
      */
     public String provider = "auto";
 
+    /** When the free AI service's daily quota is used up, translate new texts with the keyless Google service meanwhile. */
+    public boolean keylessFallback = true;
+
     public String endpoint = "https://api.openai.com/v1";
     public String model = "gpt-4o-mini";
     public int requestsPerMinute = 60;

@@ -24,21 +24,22 @@ Google Çeviri hızlıdır, ama bağlamı bilmez ve hitap biçimini karıştıra
 cümleyi bağlamıyla çevirir. Ücretsiz katman için kredi kartı **gerekmez**.
 
 1. <https://aistudio.google.com/apikey> adresine Google hesabınızla girin ve **API anahtarı oluşturun**.
-   Anahtar `AIza…` diye başlar.
+   Yeni anahtarlar `AQ.…` ile, eskiler `AIza…` ile başlar. İkisi de olur.
 2. Oyun klasöründe **`AutoTranslation/secrets/`** klasörünü oluşturun (yoksa) ve içine **`api-key.txt`** adlı bir dosya
    açın. Dosyaya yalnızca anahtarı yapıştırıp kaydedin.
    * Alternatif: `AUTOTRANSLATION_API_KEY` ortam değişkeni.
-3. Oyunu yeniden başlatın. Mod, anahtarın `AIza` ile başladığını görür ve kendiliğinden Gemini'ye geçer.
+3. Oyunu yeniden başlatın. Mod anahtarın biçiminden Gemini olduğunu anlar ve kendiliğinden Gemini'ye geçer.
 
 Anahtar dosyası hiçbir log'a yazılmaz. Dosyayı kimseyle paylaşmayın.
 
 ### Diğer ücretsiz seçenekler
 
-`AutoTranslation/settings.json` dosyasındaki `"provider"` alanı hangi hizmetin kullanılacağını belirler:
+`AutoTranslation/settings.json` dosyasındaki `"provider"` alanı hangi hizmetin kullanılacağını belirler. Dosya ilk
+açılışta oluşur; bu alan dosyada yoksa elle ekleyin (ör. `"provider": "gemini",`). Eklemezseniz `"auto"` geçerlidir:
 
 | Değer | Ne yapar |
 |---|---|
-| `"auto"` (varsayılan) | Anahtara bakar: `AIza…` → Gemini, `gsk_…` → Groq, `sk-or-…` → OpenRouter. Anahtar yoksa anahtarsız Google Çeviri. |
+| `"auto"` (varsayılan) | Anahtara bakar: `AQ.…` / `AIza…` → Gemini, `gsk_…` → Groq, `sk-or-…` → OpenRouter. Anahtar yoksa anahtarsız Google Çeviri. |
 | `"google-free"` | Her zaman anahtarsız Google Çeviri (resmi olmayan uç nokta; Google çok istek görürse bir süre engelleyebilir). |
 | `"gemini"` | Gemini, ücretsiz anahtar. |
 | `"groq"` | Groq, ücretsiz anahtar (<https://console.groq.com/keys>). |
@@ -53,8 +54,10 @@ Anahtar dosyası hiçbir log'a yazılmaz. Dosyayı kimseyle paylaşmayın.
   `AutoTranslation/cache/` içine kaydedilir; bir sonraki açılışta internet olmadan da Türkçe görünür.
 * Aynı anda istenen kısa metinler (eşya adları, düğmeler) **tek istekte** birlikte gönderilir. Ücretsiz katmanların
   dakikadaki istek sınırı bu yüzden çabuk dolmaz.
-* Ücretsiz Gemini'nin **günlük** bir sınırı vardır (yaklaşık birkaç yüz istek). Sınır dolunca mod önce aynı hizmetin
-  yedek modeline geçer. O da dolarsa yeni çevirileri bir süre bekletir. Önceden çevrilmiş metinler görünmeye devam eder.
+* Ücretsiz Gemini'nin **günlük** bir sınırı vardır (yaklaşık birkaç yüz istek; kendi sınırınızı
+  <https://aistudio.google.com/rate-limit> adresinde görebilirsiniz). Sınır dolunca mod önce aynı hizmetin yedek
+  modeline geçer. O da dolarsa yeni metinleri bu arada anahtarsız Google Çeviri ile çevirir (`"keylessFallback": false`
+  ile kapatılabilir). Önceden çevrilmiş metinler görünmeye devam eder.
 * Sohbet, tabela, kitap ve isim verme ekranlarında **oyuncunun yazdığı metinler** çevrilmez.
 
 ## 6. Sorun olursa
@@ -62,4 +65,8 @@ Anahtar dosyası hiçbir log'a yazılmaz. Dosyayı kimseyle paylaşmayın.
 * `logs/fml-client-latest.log` içinde `AutoTranslation` geçen satırlara bakın: hangi hizmetin kullanıldığı ve son
   hata orada yazar (anahtar asla yazılmaz).
 * Çeviri hiç gelmiyorsa: oyun dili Türkçe mi, `settings.json` içinde `"enabled": true` mi?
-* Gemini "quota" hatası veriyorsa günlük ücretsiz sınır dolmuştur. Ertesi gün (Türkiye saatiyle 10:00'da) sıfırlanır.
+* Gemini "quota" hatası veriyorsa günlük ücretsiz sınır dolmuştur. Pasifik saatiyle gece yarısı sıfırlanır: Türkiye
+  saatiyle yazın 10:00, kışın (Kasım–Mart) 11:00.
+* "PKIX" veya "certificate" hatası görürseniz başlatıcı çok eski bir Java 8 kullanıyordur. Profilde güncel bir Java 8
+  seçin. Google hizmetleri eski Java ile de çalışır; Groq, OpenRouter ve Mistral'de sorun çıkabilir.
+* Gemini "API key was not accepted" diyorsa anahtar yanlış kopyalanmıştır: dosyada yalnızca anahtar olmalı.

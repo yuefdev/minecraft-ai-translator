@@ -118,10 +118,12 @@ public final class Engine {
                 return openAi;
             }
         });
+        final String keylessUrl = me.langyue.autotranslation.core.provider.ProviderPreset.byId(
+                me.langyue.autotranslation.core.provider.ProviderPreset.GOOGLE_FREE).baseUrl();
         googleFree = new me.langyue.autotranslation.core.provider.GoogleFreeProvider(new java.util.function.Supplier<String>() {
             @Override
             public String get() {
-                return selection.baseUrl();
+                return keylessUrl;
             }
         }, new java.util.function.IntSupplier() {
             @Override
@@ -192,7 +194,10 @@ public final class Engine {
 
     /** The service that translations are sent to now (see {@link #selection()}). */
     public me.langyue.autotranslation.core.provider.TranslationProvider activeProvider() {
-        return selection.usesKeylessMachineTranslation() ? googleFree : provider;
+        if (selection.usesKeylessMachineTranslation()) return googleFree;
+        // the free AI quota is used up: keep translating new texts with the keyless service until it is back
+        if (settings.keylessFallback && service != null && service.quotaPaused(provider.id())) return googleFree;
+        return provider;
     }
 
     /** Which service, address and model are in use, after "auto" and the presets were worked out. */
@@ -392,7 +397,7 @@ public final class Engine {
 
     private OpenAiSettings buildOpenAiSettings() {
         int timeout = Math.max(5, Math.min(300, settings.timeoutSeconds)) * 1000;
-        return new OpenAiSettings(selection.baseUrl(), selection.model(), apiKey, 10000, timeout, selection.sendTemperature() ? settings.temperature : Double.NaN, 8192, true,
+        return new OpenAiSettings(selection.baseUrl(), selection.model(), apiKey, 10000, timeout, selection.sendTemperature() ? settings.temperature : Double.NaN, selection.maxOutputTokens(), true,
                 selection.extraParameters(), selection.fallbackModels());
     }
 

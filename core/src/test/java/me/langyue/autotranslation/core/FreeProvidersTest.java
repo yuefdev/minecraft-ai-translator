@@ -77,6 +77,30 @@ class FreeProvidersTest {
     }
 
     @Test
+    void newStyleGeminiKeysAreRecognisedToo() {
+        // AI Studio creates "AQ." keys since 2026
+        assertEquals(ProviderPreset.GEMINI, ProviderSelection.resolve("auto", Secret.of("AQ.Ab8RN6ExampleExampleExample"), "", "", 60).presetId());
+        assertEquals(ProviderPreset.GEMINI, ProviderSelection.resolve("auto", Secret.of("  AIzaSyExampleExampleExample123 "), "", "", 60).presetId(),
+                "spaces around a pasted key do not matter");
+    }
+
+    @Test
+    void keysOfTheFreeServicesNeverAppearInMessages() {
+        String text = "key AIzaSyExampleExampleExample123 and AQ.Ab8RN6ExampleExample and gsk_exampleexampleexample";
+        String redacted = me.langyue.autotranslation.core.util.Redactor.redact(text);
+        assertFalse(redacted.contains("ExampleExample"), redacted);
+        assertFalse(redacted.contains("exampleexample"), redacted);
+    }
+
+    @Test
+    void groqKeepsItsRequestsSmallBecauseItCountsTheRequestedTokens() {
+        ProviderSelection groq = ProviderSelection.resolve("groq", Secret.of("gsk_exampleexampleexample"), "", "", 60);
+        assertTrue(groq.maxOutputTokens() <= 2048 && groq.maxBatchChars() <= 1500, groq.toString());
+        assertTrue(ProviderSelection.resolve("gemini", Secret.empty(), "", "", 60).maxOutputTokens() >= 8192,
+                "Gemini's thinking counts against max_tokens: leave room");
+    }
+
+    @Test
     void aLocalServerWithoutAKeyIsKept() {
         ProviderSelection s = ProviderSelection.resolve("auto", Secret.empty(), "http://localhost:11434/v1", "qwen2.5:7b", 60);
         assertEquals(ProviderPreset.CUSTOM, s.presetId());
@@ -326,7 +350,7 @@ class FreeProvidersTest {
         assertEquals(List.of("TR| Collect iron ingots"), provider.translate(request("Collect iron ingots")));
         assertEquals(2, seen.size());
         assertEquals("second-model", seen.get(1).get("model").getAsString());
-        assertEquals("second-model", provider.model(), "the used-up model is skipped (and cache keys follow the model in use)");
+        assertEquals("free-model", provider.model(), "cache keys keep the configured model while a fallback answers");
         provider.translate(request("Open the chest"));
         assertEquals(3, seen.size(), "no further request to the used-up model");
         assertEquals("second-model", seen.get(2).get("model").getAsString());
@@ -352,7 +376,7 @@ class FreeProvidersTest {
                 r -> r.get("model").getAsString().equals("free-model") ? "[{\"error\":{\"code\":404,\"message\":\"no longer available to new users\"}}]" : answer(r),
                 seen, Map.of(), List.of("second-model"), 0.2);
         assertEquals(List.of("TR| Collect iron ingots"), provider.translate(request("Collect iron ingots")));
-        assertEquals("second-model", provider.model());
+        assertEquals("free-model", provider.model());
     }
 
     @Test
@@ -372,5 +396,81 @@ class FreeProvidersTest {
         provider.translate(request("Collect iron ingots"));
         assertFalse(seen.get(0).has("temperature"));
         assertEquals("minimal", seen.get(0).get("reasoning_effort").getAsString());
+    }
+
+    @Test
+    void aWrongGeminiKeyIsReportedAsAKeyProblem() throws Exception {
+        String body = "[{\"error\":{\"code\":400,\"message\":\"Please pass a valid API key\",\"status\":\"INVALID_ARGUMENT\"}}]";
+        OpenAiCompatibleProvider provider = chatServer(r -> 400, r -> body, new CopyOnWriteArrayList<>(), Map.of("reasoning_effort", "minimal"));
+        ProviderException e = assertThrows(ProviderException.class, () -> provider.translate(request("Collect iron ingots")));
+        assertEquals(ProviderException.Kind.AUTH, e.kind(), e.getMessage());
+    }
+
+    @Test
+    void aRefusalThatNamesNoFieldDropsTheOptionalFieldsOneByOne() throws Exception {
+        List<JsonObject> seen = new CopyOnWriteArrayList<>();
+        OpenAiCompatibleProvider provider = chatServer(
+                r -> r.has("response_format") ? 400 : 200,
+                r -> r.has("response_format") ? "[{\"error\":{\"code\":400,\"message\":\"JSON mode is not enabled for this model\"}}]" : answer(r),
+                seen, Map.of("reasoning_effort", "minimal"));
+        assertEquals(List.of("TR| Collect iron ingots"), provider.translate(request("Collect iron ingots")));
+        assertEquals(2, seen.size());
+        assertFalse(seen.get(1).has("response_format"), "the JSON mode field went first");
+        assertTrue(seen.get(1).has("reasoning_effort"), "the other optional field stays");
+    }
+
+    @Test
+    void tooLargeForTheMinuteBudgetIsARateLimitAndInvalidJsonIsRetryable() throws Exception {
+        OpenAiCompatibleProvider big = chatServer(r -> 413,
+                r -> "{\"error\":{\"message\":\"Request too large for model on tokens per minute (TPM): Limit 8000, Requested 8271\"}}",
+                new CopyOnWriteArrayList<>(), Map.of());
+        ProviderException e = assertThrows(ProviderException.class, () -> big.translate(request("Collect iron ingots")));
+        assertEquals(ProviderException.Kind.RATE_LIMIT, e.kind());
+        server.stop(0);
+        OpenAiCompatibleProvider json = chatServer(r -> 400,
+                r -> "{\"error\":{\"message\":\"Failed to generate JSON\",\"code\":\"json_validate_failed\"}}",
+                new CopyOnWriteArrayList<>(), Map.of());
+        ProviderException e2 = assertThrows(ProviderException.class, () -> json.translate(request("Collect iron ingots")));
+        assertEquals(ProviderException.Kind.BAD_RESPONSE, e2.kind());
+        assertTrue(e2.retryable());
+    }
+
+    @Test
+    void anEmptyAnswerIsNotRetriedAndACutOffAnswerIs() throws Exception {
+        String empty = "{\"choices\":[{\"finish_reason\":\"SAFETY\",\"message\":{\"role\":\"assistant\",\"content\":null}}]}";
+        OpenAiCompatibleProvider blocked = chatServer(r -> 200, r -> empty, new CopyOnWriteArrayList<>(), Map.of());
+        ProviderException e = assertThrows(ProviderException.class, () -> blocked.translate(request("Kill the Ender Dragon")));
+        assertFalse(e.retryable(), "a safety block would only use up the quota again");
+        assertTrue(e.getMessage().contains("SAFETY"));
+        server.stop(0);
+        String cut = "{\"choices\":[{\"finish_reason\":\"length\",\"message\":{\"content\":\"{\\\"translations\\\":[\\\"Ejder\"}}]}";
+        OpenAiCompatibleProvider truncated = chatServer(r -> 200, r -> cut, new CopyOnWriteArrayList<>(), Map.of());
+        ProviderException e2 = assertThrows(ProviderException.class, () -> truncated.translate(request("Kill the Ender Dragon")));
+        assertEquals(ProviderException.Kind.BAD_RESPONSE, e2.kind());
+    }
+
+    @Test
+    void aUsedUpQuotaPausesOnlyThatProviderSoAFallbackCanContinue() throws Exception {
+        String body = "[{\"error\":{\"code\":429,\"status\":\"RESOURCE_EXHAUSTED\",\"details\":[{\"violations\":[{\"quotaId\":\"GenerateRequestsPerDayPerProjectPerModel-FreeTier\"}]}]}}]";
+        OpenAiCompatibleProvider ai = chatServer(r -> 429, r -> body, new CopyOnWriteArrayList<>(), Map.of());
+        TestSupport.FakeProvider keyless = TestSupport.FakeProvider.prefixing();
+        keyless.id = "keyless";
+        var cache = new me.langyue.autotranslation.core.cache.TranslationCache(dir.resolve("cache.jsonl"), 1000);
+        cache.load();
+        var corrections = new me.langyue.autotranslation.core.cache.CorrectionStore(dir.resolve("c.json"));
+        corrections.load();
+        java.util.concurrent.atomic.AtomicReference<TranslationService> holder = new java.util.concurrent.atomic.AtomicReference<>();
+        // the same switch the engine makes: while the AI's quota is used up, the keyless provider answers
+        service = TranslationService.builder().settings(settings())
+                .provider(() -> holder.get() != null && holder.get().quotaPaused(ai.id()) ? keyless : ai)
+                .cache(cache).corrections(corrections).build();
+        holder.set(service);
+        Result first = lookupAndWait(service, plain("q:1", "Collect iron ingots"));
+        assertNull(first.segments().get(0).translation(), "the quota answer itself leaves the text in English");
+        assertTrue(service.quotaPaused(ai.id()));
+        assertFalse(service.quotaPaused("keyless"));
+        Result next = lookupAndWait(service, plain("q:1", "Collect iron ingots"));
+        assertEquals("TR| Collect iron ingots", text(next, 0), "the fallback translates while the AI waits for its quota");
+        assertEquals(1, keyless.calls.get());
     }
 }

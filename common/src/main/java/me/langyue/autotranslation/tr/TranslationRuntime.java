@@ -89,7 +89,9 @@ public final class TranslationRuntime {
         selection = select();
         openAi = buildOpenAiSettings();
         provider = new OpenAiCompatibleProvider(() -> openAi);
-        googleFree = new me.langyue.autotranslation.core.provider.GoogleFreeProvider(() -> selection.baseUrl(),
+        String keylessUrl = me.langyue.autotranslation.core.provider.ProviderPreset.byId(
+                me.langyue.autotranslation.core.provider.ProviderPreset.GOOGLE_FREE).baseUrl();
+        googleFree = new me.langyue.autotranslation.core.provider.GoogleFreeProvider(() -> keylessUrl,
                 () -> Math.max(5, Math.min(300, AutoTranslation.CONFIG.turkish.timeoutSeconds)) * 1000);
 
         service = TranslationService.builder()
@@ -121,7 +123,13 @@ public final class TranslationRuntime {
 
     /** The service translations are sent to now (keyless Google, a free AI preset or the custom address). */
     public static me.langyue.autotranslation.core.provider.TranslationProvider provider() {
-        return selection != null && selection.usesKeylessMachineTranslation() ? googleFree : provider;
+        if (selection != null && selection.usesKeylessMachineTranslation()) return googleFree;
+        // the free AI quota is used up: keep translating new texts with the keyless service until it is back
+        if (AutoTranslation.CONFIG.turkish.keylessFallback && service != null && provider != null
+                && service.quotaPaused(provider.id())) {
+            return googleFree;
+        }
+        return provider;
     }
 
     /** Which service, address and model are in use, after "auto" and the presets were worked out. */
@@ -328,7 +336,7 @@ public final class TranslationRuntime {
     private static OpenAiSettings buildOpenAiSettings() {
         Config.Turkish t = AutoTranslation.CONFIG.turkish;
         int timeout = Math.max(5, Math.min(300, t.timeoutSeconds)) * 1000;
-        return new OpenAiSettings(selection.baseUrl(), selection.model(), apiKey, 10_000, timeout, selection.sendTemperature() ? t.temperature : Double.NaN, 8192, true,
+        return new OpenAiSettings(selection.baseUrl(), selection.model(), apiKey, 10_000, timeout, selection.sendTemperature() ? t.temperature : Double.NaN, selection.maxOutputTokens(), true,
                 selection.extraParameters(), selection.fallbackModels());
     }
 

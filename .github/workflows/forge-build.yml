@@ -66,7 +66,7 @@ jobs:
         continue-on-error: true
         run: |
           # only counts are printed, never the matches; test fixtures and the start-up checks use obviously fake keys
-          n=$(git grep -IlE "sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}" -- . ':!core/src/test' ':(exclude,glob)**/SmokeTest.java' ':!common/src/main/java/me/langyue/autotranslation/smoke' | wc -l)
+          n=$(git grep -IlE "sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}|AIza[0-9A-Za-z_-]{30,}|AQ\.[A-Za-z0-9_-]{30,}|gsk_[A-Za-z0-9]{30,}" -- . ':!core/src/test' ':(exclude,glob)**/SmokeTest.java' ':!common/src/main/java/me/langyue/autotranslation/smoke' | wc -l)
           echo "files with credential-like strings outside test fixtures: $n" > scan.txt
           test "$n" -eq 0
 

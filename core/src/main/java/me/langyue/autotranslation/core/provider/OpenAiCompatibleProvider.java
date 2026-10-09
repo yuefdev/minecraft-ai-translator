@@ -39,7 +39,19 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
     private static final List<String> NEGOTIABLE_PARAMETERS = Compat.listOf("response_format", "temperature", "max_tokens", "max_completion_tokens");
 
     private final Supplier<OpenAiSettings> settings;
-    private final java.util.Set<String> unsupported = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    /** Parameters refused so far, per endpoint and model (another service or model may well accept them). */
+    private final java.util.concurrent.ConcurrentHashMap<String, java.util.Set<String>> unsupportedByTarget =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private java.util.Set<String> unsupported(OpenAiSettings s) {
+        String target = s.endpoint() + "|" + s.model();
+        java.util.Set<String> set = unsupportedByTarget.get(target);
+        if (set == null) {
+            unsupportedByTarget.putIfAbsent(target, java.util.concurrent.ConcurrentHashMap.<String>newKeySet());
+            set = unsupportedByTarget.get(target);
+        }
+        return set;
+    }
 
     public OpenAiCompatibleProvider(Supplier<OpenAiSettings> settings) {
         this.settings = settings;
@@ -71,16 +83,13 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
         return s.endpoint() + "|" + model;
     }
 
-    /** The model requests go to now: the configured one, or a fallback while the configured one is used up. */
+    /**
+     * The configured model. It is part of every cache key, so it stays the same while a fallback model of the same
+     * service answers (otherwise texts would be translated again each time the service switches models).
+     */
     @Override
     public String model() {
-        OpenAiSettings s = settings.get();
-        long now = System.currentTimeMillis();
-        for (String candidate : candidates(s)) {
-            Skip skip = skipped.get(skipKey(s, candidate));
-            if (skip == null || skip.until <= now) return candidate;
-        }
-        return s.model();
+        return settings.get().model();
     }
 
     private static List<String> candidates(OpenAiSettings s) {
@@ -137,7 +146,7 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
             try {
                 return callOnce(s, request);
             } catch (ParameterRejected e) {
-                if (attempt >= NEGOTIABLE_PARAMETERS.size() + s.extraParameters().size() || !unsupported.add(e.parameter)) {
+                if (attempt >= NEGOTIABLE_PARAMETERS.size() + s.extraParameters().size() || !unsupported(s).add(e.parameter)) {
                     throw new ProviderException(ProviderException.Kind.BAD_REQUEST, e.getMessage());
                 }
                 CoreLog.info("The endpoint rejected the parameter '" + e.parameter + "'; continuing without it");
@@ -147,7 +156,8 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
 
     private List<String> callOnce(OpenAiSettings s, ProviderRequest request)
             throws ProviderException, ParameterRejected {
-        byte[] body = buildBody(s, request, unsupported).getBytes(StandardCharsets.UTF_8);
+        java.util.Set<String> refused = unsupported(s);
+        byte[] body = buildBody(s, request, refused).getBytes(StandardCharsets.UTF_8);
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL(s.endpoint()).openConnection();
@@ -169,7 +179,7 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
             int status = connection.getResponseCode();
             if (status >= 300) {
                 String errorBody = readBody(connection.getErrorStream());
-                throw statusFailure(status, errorBody, connection.getHeaderField("Retry-After"), s.extraParameters().keySet());
+                throw statusFailure(status, errorBody, connection.getHeaderField("Retry-After"), droppable(s, refused), refused);
             }
             return parseResponse(readBody(connection.getInputStream()), request.segments().size());
         } catch (SocketTimeoutException e) {
@@ -186,13 +196,35 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
         }
     }
 
-    private ProviderException statusFailure(int status, String errorBody, String retryAfter, java.util.Set<String> extraParameters)
-            throws ParameterRejected {
+    /** Optional fields this request carried, in the order they are given up when a service refuses "something". */
+    private static List<String> droppable(OpenAiSettings s, java.util.Set<String> refused) {
+        List<String> list = new ArrayList<>();
+        if (s.jsonResponseFormat() && !refused.contains("response_format")) list.add("response_format");
+        for (String extra : s.extraParameters().keySet()) if (!refused.contains(extra)) list.add(extra);
+        return list;
+    }
+
+    private static final Pattern AUTH_HINT = Pattern.compile(
+            "(?i)api[ _-]?key|auth(?:entication|orization)? (?:key|header)|invalid[ _-]?api[ _-]?key|api_key_invalid|unauthenticated|ACCESS_TOKEN_TYPE_UNSUPPORTED");
+
+    private ProviderException statusFailure(int status, String errorBody, String retryAfter, List<String> droppable,
+                                            java.util.Set<String> refused) throws ParameterRejected {
         String snippet = errorBody == null ? "" : errorBody.replaceAll("\\s+", " ");
         if (snippet.length() > 200) snippet = snippet.substring(0, 200) + "...";
         String detail = "HTTP " + status + (snippet.isEmpty() ? "" : ": " + snippet);
-        if (status == 401 || status == 403) {
-            return new ProviderException(ProviderException.Kind.AUTH, "Authentication failed (" + detail + ")");
+        String body = errorBody == null ? "" : errorBody;
+        if (status == 401 || status == 403 || (status == 400 && AUTH_HINT.matcher(body).find())) {
+            // Gemini answers a wrong key with 400 "Please pass a valid API key"
+            return new ProviderException(ProviderException.Kind.AUTH, "The API key was not accepted (" + detail + ")");
+        }
+        if (body.contains("User location is not supported") || body.contains("FAILED_PRECONDITION") && body.contains("location")) {
+            return new ProviderException(ProviderException.Kind.BAD_REQUEST,
+                    "This service is not available from your location (" + detail + ")");
+        }
+        if (status == 413) {
+            // Groq: "Request too large ... tokens per minute": the request (incl. max_tokens) exceeds a per-minute budget
+            return new ProviderException(ProviderException.Kind.RATE_LIMIT, "Request too large for the per-minute limit (" + detail + ")",
+                    Math.max(retryDelayFromBody(body), 20_000L));
         }
         if (status == 429) {
             long wait = parseRetryAfter(retryAfter);
@@ -214,14 +246,21 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
                     parseRetryAfter(retryAfter));
         }
         if (status == 400 || status == 422) {
-            String lower = errorBody == null ? "" : errorBody.toLowerCase(java.util.Locale.ROOT);
-            List<String> candidates = new ArrayList<>(extraParameters);
-            candidates.addAll(NEGOTIABLE_PARAMETERS);
+            String lower = body.toLowerCase(java.util.Locale.ROOT);
+            if (lower.contains("json_validate_failed")) {
+                // Groq: the model produced invalid JSON this time; another attempt usually works
+                return new ProviderException(ProviderException.Kind.BAD_RESPONSE, "The service could not produce valid JSON (" + detail + ")");
+            }
+            List<String> candidates = new ArrayList<>(droppable);
+            for (String parameter : NEGOTIABLE_PARAMETERS) if (!candidates.contains(parameter)) candidates.add(parameter);
             for (String parameter : candidates) {
-                if (lower.contains(parameter.toLowerCase(java.util.Locale.ROOT)) && !unsupported.contains(parameter)) {
+                if (lower.contains(parameter.toLowerCase(java.util.Locale.ROOT)) && !refused.contains(parameter)) {
                     throw new ParameterRejected(parameter, detail);
                 }
             }
+            // refused without naming the field (e.g. "JSON mode is not enabled", a list of allowed values):
+            // give up one optional field and try again; bounded by the number of optional fields
+            if (!droppable.isEmpty()) throw new ParameterRejected(droppable.get(0), detail);
         }
         return new ProviderException(ProviderException.Kind.BAD_REQUEST, "Request rejected (" + detail + ")");
     }
@@ -292,9 +331,20 @@ public final class OpenAiCompatibleProvider implements TranslationProvider {
     static List<String> parseResponse(String responseBody, int expected) throws ProviderException {
         try {
             JsonObject root = Compat.parseJson(responseBody).getAsJsonObject();
-            String content = root.getAsJsonArray("choices").get(0).getAsJsonObject()
-                    .getAsJsonObject("message").get("content").getAsString();
-            return parseTranslations(content, expected);
+            JsonObject choice = root.getAsJsonArray("choices").get(0).getAsJsonObject();
+            JsonElement finish = choice.get("finish_reason");
+            String reason = finish == null || finish.isJsonNull() ? "" : finish.getAsString();
+            JsonObject message = choice.getAsJsonObject("message");
+            JsonElement contentElement = message == null ? null : message.get("content");
+            if (contentElement == null || contentElement.isJsonNull() || Compat.isBlank(contentElement.getAsString())) {
+                // a safety filter (Gemini: SAFETY / PROHIBITED_CONTENT, OpenAI: content_filter): asking again only uses quota
+                throw new ProviderException(ProviderException.Kind.BAD_REQUEST,
+                        "The service returned no text" + (reason.isEmpty() ? "" : " (finish reason " + reason + ")"));
+            }
+            if ("length".equalsIgnoreCase(reason)) {
+                throw new ProviderException(ProviderException.Kind.BAD_RESPONSE, "The answer was cut off (output limit reached)");
+            }
+            return parseTranslations(contentElement.getAsString(), expected);
         } catch (ProviderException e) {
             throw e;
         } catch (RuntimeException e) {

@@ -83,6 +83,9 @@ public class Config implements ConfigData {
         @Comment("Çeviri hizmeti: auto (anahtara göre seçilir; anahtar yoksa ücretsiz, anahtarsız Google Çeviri), google-free, gemini (ücretsiz anahtar), groq, openrouter, ollama (bilgisayarınızda) veya custom (aşağıdaki uç nokta ve model)")
         public String provider = "auto";
 
+        @Comment("Ücretsiz yapay zekâ hizmetinin günlük kotası dolunca yeni metinleri bu arada anahtarsız Google Çeviri ile çevir")
+        public boolean keylessFallback = true;
+
         @Comment("Yalnızca 'custom' hizmette: OpenAI uyumlu uç nokta (taban adres), örn. https://api.openai.com/v1 veya http://localhost:11434/v1")
         public String endpoint = "https://api.openai.com/v1";
 

@@ -28,7 +28,7 @@ Gerekli: Minecraft **1.20.1**, Forge **47.x**, Java 17, [Architectury API](https
 1. `AutoTranslation-<sürüm>+mc1.20.1-forge.jar` dosyasını `mods/` klasörüne koyun.
 2. Oyunda dili **Türkçe (tr_tr)** yapın.
 3. Hiçbir şey yapmasanız da çeviri çalışır (anahtarsız Google Çeviri). Daha iyi Türkçe için ücretsiz bir
-   **Gemini anahtarı** alın (<https://aistudio.google.com/apikey>, `AIza…` ile başlar) ve girin – **dosyaya düz yazılmaz**:
+   **Gemini anahtarı** alın (<https://aistudio.google.com/apikey>; `AQ.…` veya `AIza…` ile başlar) ve girin – **dosyaya düz yazılmaz**:
    * ortam değişkeni `AUTOTRANSLATION_API_KEY` (öncelikli), ya da
    * Mod menüsü → AutoTranslation → **Sağlayıcı** sekmesi → API anahtarı (yalnızca
      `oyun klasörü/AutoTranslation/secrets/api-key.txt` içine, sahibine özel izinle yazılır; klasör `.gitignore`'dadır).

@@ -37,7 +37,8 @@ public final class ProviderPreset {
     private final String model;
     private final int requestsPerMinute;
     private final boolean keyRequired;
-    private final String keyPrefix;
+    private final List<String> keyPrefixes;
+    private final int maxOutputTokens;
     private final String keyUrl;
     private final int maxBatchChars;
     private final int maxSegmentsPerBatch;
@@ -46,15 +47,17 @@ public final class ProviderPreset {
     private final boolean sendTemperature;
 
     private ProviderPreset(String id, Kind kind, String baseUrl, String model, int requestsPerMinute, boolean keyRequired,
-                           String keyPrefix, String keyUrl, int maxBatchChars, int maxSegmentsPerBatch,
-                           Map<String, String> extraParameters, List<String> fallbackModels, boolean sendTemperature) {
+                           List<String> keyPrefixes, String keyUrl, int maxBatchChars, int maxSegmentsPerBatch,
+                           Map<String, String> extraParameters, List<String> fallbackModels, boolean sendTemperature,
+                           int maxOutputTokens) {
         this.id = id;
         this.kind = kind;
         this.baseUrl = baseUrl;
         this.model = model;
         this.requestsPerMinute = requestsPerMinute;
         this.keyRequired = keyRequired;
-        this.keyPrefix = keyPrefix;
+        this.keyPrefixes = Collections.unmodifiableList(new ArrayList<String>(keyPrefixes));
+        this.maxOutputTokens = maxOutputTokens;
         this.keyUrl = keyUrl;
         this.maxBatchChars = maxBatchChars;
         this.maxSegmentsPerBatch = maxSegmentsPerBatch;
@@ -89,21 +92,24 @@ public final class ProviderPreset {
     static {
         List<ProviderPreset> all = new ArrayList<ProviderPreset>();
         all.add(new ProviderPreset(GOOGLE_FREE, Kind.GOOGLE_FREE, "https://translate.googleapis.com/translate_a/t", "gtx",
-                20, false, "", "", 5000, 50, params(), models(), true));
+                20, false, models(), "", 5000, 50, params(), models(), true, 0));
+        // AI Studio hands out "AQ." keys since 2026; older keys start with "AIza"
         all.add(new ProviderPreset(GEMINI, Kind.OPENAI_COMPATIBLE, "https://generativelanguage.googleapis.com/v1beta/openai",
-                "gemini-3.5-flash-lite", 10, true, "AIza", "https://aistudio.google.com/apikey", 6000, 48,
-                params("reasoning_effort", "minimal"), models("gemini-3.1-flash-lite"), false));
+                "gemini-3.5-flash-lite", 10, true, models("AIza", "AQ."), "https://aistudio.google.com/apikey", 6000, 48,
+                params("reasoning_effort", "minimal"), models("gemini-3.1-flash-lite"), false, 8192));
+        // Groq counts the requested max_tokens against its 8,000 tokens per minute: keep both the output limit and
+        // the batches small, otherwise every request is refused with 413
         all.add(new ProviderPreset(GROQ, Kind.OPENAI_COMPATIBLE, "https://api.groq.com/openai/v1",
-                "openai/gpt-oss-120b", 4, true, "gsk_", "https://console.groq.com/keys", 2500, 24,
-                params("reasoning_effort", "low"), models("openai/gpt-oss-20b"), true));
+                "openai/gpt-oss-120b", 3, true, models("gsk_"), "https://console.groq.com/keys", 1500, 16,
+                params("reasoning_effort", "low"), models("openai/gpt-oss-20b"), true, 2048));
         all.add(new ProviderPreset(MISTRAL, Kind.OPENAI_COMPATIBLE, "https://api.mistral.ai/v1",
-                "mistral-medium-latest", 50, true, "", "https://console.mistral.ai/api-keys", 6000, 48,
-                params(), models("mistral-small-latest"), true));
+                "mistral-medium-latest", 50, true, models(), "https://console.mistral.ai/api-keys", 6000, 48,
+                params(), models("mistral-small-latest"), true, 8192));
         all.add(new ProviderPreset(OPENROUTER, Kind.OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1",
-                "google/gemma-4-31b-it:free", 15, true, "sk-or-", "https://openrouter.ai/keys", 6000, 48,
-                params(), models("google/gemma-4-26b-a4b-it:free"), true));
+                "google/gemma-4-31b-it:free", 15, true, models("sk-or-"), "https://openrouter.ai/keys", 6000, 48,
+                params(), models("google/gemma-4-26b-a4b-it:free"), true, 8192));
         all.add(new ProviderPreset(OLLAMA, Kind.OPENAI_COMPATIBLE, "http://localhost:11434/v1", "gemma3:4b",
-                600, false, "", "https://ollama.com/download", 2000, 16, params(), models(), true));
+                600, false, models(), "https://ollama.com/download", 2000, 16, params(), models(), true, 4096));
         ALL = Collections.unmodifiableList(all);
     }
 
@@ -140,10 +146,13 @@ public final class ProviderPreset {
         if (key == null || key.isEmpty()) return null;
         String value = key.reveal().trim();
         ProviderPreset best = null;
+        int bestLength = 0;
         for (ProviderPreset p : ALL) {
-            if (!p.keyPrefix.isEmpty() && value.startsWith(p.keyPrefix)
-                    && (best == null || p.keyPrefix.length() > best.keyPrefix.length())) {
-                best = p;
+            for (String prefix : p.keyPrefixes) {
+                if (value.startsWith(prefix) && prefix.length() > bestLength) {
+                    best = p;
+                    bestLength = prefix.length();
+                }
             }
         }
         return best;
@@ -177,6 +186,11 @@ public final class ProviderPreset {
     /** Where a player gets a (free) key, or where the program is downloaded; empty if not applicable. */
     public String keyUrl() {
         return keyUrl;
+    }
+
+    /** Upper limit of the answer's length in tokens (0: the service's default). */
+    public int maxOutputTokens() {
+        return maxOutputTokens;
     }
 
     public int maxBatchChars() {
