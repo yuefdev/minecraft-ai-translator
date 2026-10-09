@@ -208,4 +208,29 @@ class MaskerTest {
         assertTrue(second.masked().contains("[[P0]]") && second.masked().contains("[[P1]]"));
         assertEquals("Second {x} sentence with %d.", second.original());
     }
+
+    // ----- markup injection: a translation must not introduce syntax that the game would interpret ----------
+
+    @Test
+    void newAmpersandsOrBracesInFtbTextAreRejected() {
+        MaskedText m = masker.mask("&6Fire and Ice", MaskProfile.FTB_RICH);
+        assertTrue(masker.restore(m, "[[P0]]Ateş ve Buz").ok());
+        assertFalse(masker.restore(m, "[[P0]]Ateş & Buz").ok(), "a bare & breaks FTB rich text");
+        assertFalse(masker.restore(m, "[[P0]]Ateş {ve} Buz").ok(), "braces start substitutes in FTB rich text");
+        assertFalse(masker.restore(m, "[[P0]]Ateş \\n Buz").ok(), "backslashes are escapes in FTB rich text");
+        assertFalse(masker.restore(m, "[[P0]]Ateş §a Buz").ok());
+    }
+
+    @Test
+    void newPatchouliCommandsAreRejected() {
+        MaskedText m = masker.mask("Hello $(br)world", MaskProfile.PATCHOULI);
+        assertTrue(masker.restore(m, "Merhaba [[P0]]dünya").ok());
+        assertFalse(masker.restore(m, "Merhaba [[P0]]dünya $(br)").ok());
+    }
+
+    @Test
+    void ampersandAndBracesAreFineInPlainLanguageText() {
+        MaskedText m = masker.mask("Fire and Ice", MaskProfile.PLAIN);
+        assertTrue(masker.restore(m, "Ateş & Buz").ok());
+    }
 }

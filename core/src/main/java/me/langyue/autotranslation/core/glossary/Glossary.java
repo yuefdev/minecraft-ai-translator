@@ -33,6 +33,7 @@ public final class Glossary {
     private volatile Map<String, String> terms = Map.of();
     private volatile Map<String, String> hints = Map.of();
     private volatile List<Compiled> compiled = List.of();
+    private volatile Map<String, Term> hintIndex = Map.of();
     private volatile String version = "0";
 
     public Glossary() {
@@ -104,16 +105,38 @@ public final class Glossary {
                 found.put(c.term().source(), c.term().target());
             }
         }
+        Map<String, Term> hintsNow = hintIndex;
+        if (found.size() < limit && !hintsNow.isEmpty()) {
+            List<String> words = new ArrayList<>();
+            java.util.regex.Matcher m = WORD.matcher(text);
+            while (m.find()) words.add(m.group().toLowerCase(Locale.ROOT));
+            for (int n = Math.min(4, words.size()); n >= 1 && found.size() < limit; n--) {
+                for (int i = 0; i + n <= words.size() && found.size() < limit; i++) {
+                    Term term = hintsNow.get(String.join(" ", words.subList(i, i + n)));
+                    if (term != null) found.putIfAbsent(term.source(), term.target());
+                }
+            }
+        }
         return found;
     }
 
+    private static final Pattern WORD = Pattern.compile("[\\p{L}\\p{N}][\\p{L}\\p{N}'’-]*");
+
+    private static String normalizeKey(String key) {
+        return String.join(" ", key.toLowerCase(Locale.ROOT).strip().split("\\s+"));
+    }
+
     private void rebuild(Map<String, String> newTerms, Map<String, String> newHints) {
-        Map<String, String> merged = new LinkedHashMap<>();
-        // hints first so that user terms with the same source replace them
+        // Hints can number in the tens of thousands, so they are matched by word n-grams in a hash map instead of
+        // one regular expression each. Only the (few) editable terms are compiled to patterns.
+        Map<String, Term> hintMap = new java.util.HashMap<>();
         for (Map.Entry<String, String> hint : newHints.entrySet()) {
-            if (findKey(newTerms, hint.getKey()) == null) merged.put(hint.getKey(), hint.getValue());
+            if (findKey(newTerms, hint.getKey()) == null) {
+                hintMap.put(normalizeKey(hint.getKey()), new Term(hint.getKey(), hint.getValue()));
+            }
         }
-        merged.putAll(newTerms);
+        this.hintIndex = hintMap;
+        Map<String, String> merged = new LinkedHashMap<>(newTerms);
         List<Compiled> list = new ArrayList<>(merged.size());
         for (Map.Entry<String, String> e : merged.entrySet()) {
             Pattern p = Pattern.compile("(?<![\\p{L}\\p{N}])" + Pattern.quote(e.getKey()) + "(?![\\p{L}\\p{N}])",

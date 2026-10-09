@@ -71,10 +71,10 @@ public final class Masker {
 
     public MaskedText mask(String source, MaskProfile profile) {
         if (source == null) source = "";
-        if (ANY_TOKEN_LIKE.matcher(source).find()) return MaskedText.unsafe(source);
+        if (ANY_TOKEN_LIKE.matcher(source).find()) return MaskedText.unsafe(source, profile);
         List<String> placeholders = new ArrayList<>();
         String masked = maskInto(source, profile, placeholders);
-        return new MaskedText(source, masked, List.copyOf(placeholders), 0, false);
+        return new MaskedText(source, masked, List.copyOf(placeholders), 0, false, profile);
     }
 
     /**
@@ -86,7 +86,7 @@ public final class Masker {
         StringBuilder original = new StringBuilder();
         for (String run : runs) {
             if (run != null && ANY_TOKEN_LIKE.matcher(run).find()) {
-                return MaskedText.unsafe(String.join("", runs));
+                return MaskedText.unsafe(String.join("", runs), profile);
             }
             original.append(run == null ? "" : run);
         }
@@ -98,7 +98,7 @@ public final class Masker {
                     .append(maskInto(run, profile, placeholders))
                     .append("[[/R").append(i).append("]]");
         }
-        return new MaskedText(original.toString(), masked.toString(), List.copyOf(placeholders), runs.size(), false);
+        return new MaskedText(original.toString(), masked.toString(), List.copyOf(placeholders), runs.size(), false, profile);
     }
 
     private String maskInto(String source, MaskProfile profile, List<String> placeholders) {
@@ -141,7 +141,7 @@ public final class Masker {
         String tail = maskedPiece.substring(last);
         masked.append(tail);
         original.append(tail);
-        return new MaskedText(original.toString(), masked.toString(), List.copyOf(local), 0, false);
+        return new MaskedText(original.toString(), masked.toString(), List.copyOf(local), 0, false, whole.profile());
     }
 
     /** The text a reader would see: protected elements and run tags removed. Used for language analysis. */
@@ -179,6 +179,11 @@ public final class Masker {
 
         if (!digitRuns(visibleSource).equals(digitRuns(visibleTarget))) {
             return RestoreResult.failure("numbers changed");
+        }
+        if (source.profile() != null && source.profile().forbiddenInVisibleText != null
+                && checkCommentary && source.profile().forbiddenInVisibleText.matcher(visibleTarget).find()
+                && !source.profile().forbiddenInVisibleText.matcher(visibleSource).find()) {
+            return RestoreResult.failure("answer contains markup characters that were not in the source");
         }
         if (count(source.masked(), '\n') != count(normalized, '\n')) {
             return RestoreResult.failure("line structure changed");

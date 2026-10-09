@@ -18,7 +18,11 @@ dependencies {
 }
 
 architectury {
-    common("fabric", "forge")
+    if (rootProject.hasProperty("withFabric")) {
+        common("fabric", "forge")
+    } else {
+        common("forge")
+    }
 }
 
 publishing {

@@ -314,6 +314,12 @@ public final class TranslationService implements AutoCloseable {
         return masker;
     }
 
+    /** Cheap, memoised check used on hot paths: could this text be translated at all? */
+    public boolean needsTranslation(String text, MaskProfile profile) {
+        if (!settings.enabled() || text == null || text.isBlank()) return false;
+        return prepare(Segment.plain(text), profile, settings.target()).translatable();
+    }
+
     public Stats stats() {
         TranslationProvider provider = providerSupplier.get();
         return new Stats(queue.size(), inFlight.get(), translated.get(), failed.get(), cacheHits.get(),

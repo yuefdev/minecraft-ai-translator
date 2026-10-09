@@ -94,4 +94,21 @@ class GlossaryTest {
         Files.writeString(file, "{ this is not json");
         assertEquals("Görev", new GlossaryStore(file).load().get("Quest"));
     }
+
+    @Test
+    void largeHintListsAreMatchedByWordsAndStayFast() {
+        Map<String, String> hints = new java.util.HashMap<>();
+        for (int i = 0; i < 50_000; i++) hints.put("Thing Number " + i, "Şey " + i);
+        hints.put("Wither Skeleton Skull", "Wither İskelet Kafatası");
+        hints.put("Furnace", "Fırın");
+        Glossary g = new Glossary();
+        g.replaceHints(hints);
+        long begin = System.nanoTime();
+        Map<String, String> found = Map.of();
+        for (int i = 0; i < 200; i++) found = g.matching("Smelt ore in the furnace, then craft a wither skeleton skull.", 10);
+        long millis = (System.nanoTime() - begin) / 1_000_000;
+        assertEquals("Fırın", found.get("Furnace"));
+        assertEquals("Wither İskelet Kafatası", found.get("Wither Skeleton Skull"));
+        assertTrue(millis < 500, "200 lookups against 50k hints took " + millis + "ms");
+    }
 }

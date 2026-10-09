@@ -11,14 +11,16 @@ import java.util.List;
  * @param placeholders protected substrings, index = token number
  * @param runCount     number of style runs when the text was built from styled runs, otherwise 0
  * @param unsafe       the source already contains token-like text, so it cannot be masked reliably
+ * @param profile      syntax the text was masked with; decides which characters may not appear in a translation
  */
-public record MaskedText(String original, String masked, List<String> placeholders, int runCount, boolean unsafe) {
+public record MaskedText(String original, String masked, List<String> placeholders, int runCount, boolean unsafe,
+                         MaskProfile profile) {
 
     public boolean isRunMode() {
         return runCount > 0;
     }
 
-    public static MaskedText unsafe(String original) {
-        return new MaskedText(original, original, List.of(), 0, true);
+    public static MaskedText unsafe(String original, MaskProfile profile) {
+        return new MaskedText(original, original, List.of(), 0, true, profile);
     }
 }
