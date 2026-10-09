@@ -1,3 +1,14 @@
+# V1.3.0 (Türkçe çeviri hattı)
+
+- Minecraft 1.20.1 / Forge 47 hedeflendi (bağımlılık sürümleri CI'da gerçek derlemeyle doğrulandı).
+- OpenAI uyumlu çeviri sağlayıcısı: uç nokta, model, API anahtarı ayarlanabilir; anahtar yapılandırma dosyasına ve günlüğe yazılmaz.
+- FTB Quests: görev/bölüm başlıkları, alt başlıklar, açıklamalar, hedef ve ödül başlıkları gösterim anında çevrilir; oyun verisi değişmez.
+- Patchouli: kitap/kategori/giriş başlıkları, sayfa metinleri ve sayfa başlıkları, yerleşim hesaplanmadan önce çevrilir.
+- Yer tutucular, renk kodları, URL'ler, kimlikler ve Patchouli komutları çeviri öncesi maskelenir, sonrasında doğrulanır; doğrulama başarısızsa özgün metin gösterilir.
+- Düzenlenebilir sözlük, yerel düzeltmeler, kalıcı çevrimdışı önbellek, kuyruk/hız sınırı/zaman aşımı/sınırlı yeniden deneme.
+- Türkçe ayarlar ekranı (Genel, Sağlayıcı, Sözlük, Düzeltmeler, Durum).
+- Türkçe/İngilizce algılama artık yalnızca özel karakterlere bakmaz.
+
 # V1.2.1
 
 2023-12-30

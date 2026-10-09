@@ -1,3 +1,13 @@
+# V1.3.0 (Turkish translation pipeline)
+
+- Targets Minecraft 1.20.1 / Forge 47 (dependency versions verified by a real CI build).
+- OpenAI compatible provider with configurable endpoint, model and API key; the key is never written to the config or logs.
+- FTB Quests: chapter/quest titles, subtitles, descriptions, task and reward titles are translated at display time; game data is untouched.
+- Patchouli: book/category/entry titles, page text and page titles are translated before layout.
+- Placeholders, colour codes, URLs, ids and Patchouli commands are masked before translation and verified afterwards; on failure the original text is shown.
+- Editable glossary, local corrections, persistent offline cache, bounded queue/rate limit/timeout/retries.
+- Turkish settings screen; Turkish/English detection no longer relies on special characters alone.
+
 > The following is a machine translation. Welcome to correct grammatical errors.
 
 # V1.2.1
