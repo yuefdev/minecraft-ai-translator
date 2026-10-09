@@ -42,7 +42,7 @@ public final class SmokeTestFtb {
                     () -> {
                         var lines = quest.getDescription();
                         return lines.size() == 3 && lines.get(0).getString().startsWith("TR| Mine some iron")
-                                && lines.get(1).getString().equals("{@pagebreak}")
+                                && lines.get(1).getString().equals(dev.ftb.mods.ftbquests.util.TextUtils.parseRawText("{@pagebreak}").getString())
                                 && lines.get(2).getString().startsWith("TR| Bring 25 ingots");
                     }, 600,
                     () -> me.langyue.autotranslation.smoke.SmokeTest.check("ftbquests: description translated with page break and line count preserved", false,

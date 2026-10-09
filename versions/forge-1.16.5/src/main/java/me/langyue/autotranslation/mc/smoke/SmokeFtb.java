@@ -47,7 +47,7 @@ final class SmokeFtb {
                     () -> {
                         Component[] result = quest.getDescription();
                         return result.length == 3 && result[0].getString().startsWith("TR| Mine some iron")
-                                && result[1].getString().equals("{@pagebreak}")
+                                && result[1].getString().equals(dev.ftb.mods.ftblibrary.util.ClientTextComponentUtils.parse("{@pagebreak}").getString())
                                 && result[2].getString().startsWith("TR| Bring 25 ingots");
                     }, 600,
                     () -> {

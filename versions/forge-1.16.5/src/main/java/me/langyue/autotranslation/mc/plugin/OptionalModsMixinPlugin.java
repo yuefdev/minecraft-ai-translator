@@ -22,6 +22,7 @@ public final class OptionalModsMixinPlugin implements IMixinConfigPlugin {
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         if (mixinClassName.contains(".mixin.ftb.")) return isModPresent("ftbquests");
         if (mixinClassName.contains(".mixin.patchouli.")) return isModPresent("patchouli");
+        if (mixinClassName.contains(".mixin.dev.")) return isDevelopmentRun();
         return true;
     }
 
@@ -40,6 +41,21 @@ public final class OptionalModsMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
+    }
+
+    /** Mojmap-named development run (CI start-up check); a real game runs on SRG names and needs no repairs. */
+    private static boolean isDevelopmentRun() {
+        try {
+            Class<?> fmlLoader = Class.forName("net.minecraftforge.fml.loading.FMLLoader");
+            return !((Boolean) fmlLoader.getMethod("isProduction").invoke(null));
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            try {
+                Class<?> environment = Class.forName("net.minecraftforge.fml.loading.FMLEnvironment");
+                return !environment.getField("production").getBoolean(null);
+            } catch (ReflectiveOperationException | RuntimeException again) {
+                return false;
+            }
+        }
     }
 
     /** Forge's loading mod list, which exists this early (before any mod object), reached by reflection. */
