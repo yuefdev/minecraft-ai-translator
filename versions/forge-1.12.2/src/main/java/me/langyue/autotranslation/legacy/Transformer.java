@@ -25,7 +25,8 @@ import org.objectweb.asm.tree.VarInsnNode;
  *   <li>FTB Quests {@code FTBQuestsClient.addI18nAndColors(String)}: the single place every quest title, subtitle
  *       and description line goes through before it is shown.</li>
  *   <li>Patchouli {@code BookTextRenderer(GuiBook, String, ...)}: page text is translated before it is laid out;
- *       {@code BookEntry/BookCategory.getName} and {@code BookPage.i18n} results are translated on return.</li>
+ *       {@code BookEntry/BookCategory.getName} results are translated on return and page titles right before
+ *       {@code GuiBook.drawCenteredStringNoShadow} draws them.</li>
  * </ul>
  */
 public class Transformer implements IClassTransformer {
@@ -51,8 +52,9 @@ public class Transformer implements IClassTransformer {
                     || "vazkii.patchouli.client.book.BookCategory".equals(transformedName)) {
                 return patchReturn(bytes, transformedName, "getName", "()Ljava/lang/String;", "patchouliName");
             }
-            if ("vazkii.patchouli.client.book.BookPage".equals(transformedName)) {
-                return patchReturn(bytes, transformedName, "i18n", STRING, "patchouliLabel");
+            if ("vazkii.patchouli.client.book.gui.GuiBook".equals(transformedName)) {
+                // page titles are drawn through this method: drawCenteredStringNoShadow(String s, int x, int y, int color)
+                return patchHead(bytes, transformedName, "drawCenteredStringNoShadow", "(Ljava/lang/String;III)V", 1, "patchouliLabel");
             }
         } catch (Throwable t) {
             LOGGER.error("Could not patch {}; it is left unchanged", transformedName, t);

@@ -148,18 +148,18 @@ public final class SmokeTest {
     private static void patchouli(Engine engine) {
         if (!optional(engine, "patchouli", "vazkii.patchouli.client.book.BookPage")) return;
         try {
-            Class<?> bookClass = Class.forName("vazkii.patchouli.common.book.Book");
-            Class<?> pageClass = Class.forName("vazkii.patchouli.client.book.page.PageText");
-            final Object book = allocate(bookClass);
-            set(bookClass, book, "i18n", Boolean.FALSE);
-            final Object page = pageClass.newInstance();
-            Field bookField = Class.forName("vazkii.patchouli.client.book.BookPage").getField("book");
-            bookField.set(page, book);
-            final Method i18n = Class.forName("vazkii.patchouli.client.book.BookPage").getMethod("i18n", String.class);
-            Object first = i18n.invoke(page, "Iron Age");
-            REPORT.check("patchouli: original label shown while translation is pending", "Iron Age".equals(first), String.valueOf(first));
-            REPORT.waitFor("patchouli: page title translated through BookPage.i18n -> pipeline -> provider",
-                    () -> "TR| Iron Age".equals(callOn(i18n, page, "Iron Age")), 600, () -> String.valueOf(callOn(i18n, page, "Iron Age")));
+            // an entry without its constructor: only the name field the hook reads is filled in
+            Class<?> entryClass = Class.forName("vazkii.patchouli.client.book.BookEntry");
+            final Object entry = allocate(entryClass);
+            Field nameField = entryClass.getDeclaredField("name");
+            nameField.setAccessible(true);
+            nameField.set(entry, "Iron Age");
+            final Method getName = entryClass.getMethod("getName");
+            Object first = getName.invoke(entry);
+            REPORT.check("patchouli: original entry name shown while translation is pending", "Iron Age".equals(first), String.valueOf(first));
+            REPORT.waitFor("patchouli: entry name translated through BookEntry.getName -> pipeline -> provider",
+                    () -> "TR| Iron Age".equals(callOn(getName, entry, null)), 600, () -> String.valueOf(callOn(getName, entry, null)));
+            REPORT.check("patchouli: raw name field untouched", "Iron Age".equals(nameField.get(entry)), String.valueOf(nameField.get(entry)));
         } catch (Throwable t) {
             REPORT.check("patchouli: functional test setup", false, t.toString());
         }
@@ -177,7 +177,7 @@ public final class SmokeTest {
 
     private static Object callOn(Method method, Object target, String text) {
         try {
-            return method.invoke(target, text);
+            return text == null ? method.invoke(target) : method.invoke(target, text);
         } catch (Exception e) {
             return e.toString();
         }
