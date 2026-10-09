@@ -114,3 +114,33 @@ jobs:
           check $B/1.18.2-71.1/Patchouli-1.18.2-71.1.jar
           check $B/1.19.2-77/Patchouli-1.19.2-77.jar
           check $B/1.21.1-93-NEOFORGE/Patchouli-1.21.1-93-NEOFORGE.jar
+      - name: 1.12.2 / 1.16.5 sources
+        run: |
+          for u in https://maven.architectury.dev/me/shedaniel/architectury-forge/maven-metadata.xml https://maven.architectury.dev/me/shedaniel/architectury/maven-metadata.xml https://maven.architectury.dev/dev/architectury/architectury-forge/maven-metadata.xml; do
+            echo "-- $u"; curl -fsSL --max-time 30 "$u" -o m.xml && grep -oE "<version>[^<]+</version>" m.xml | sed -E 's/<[^>]+>//g' | sort -V | grep -E "^(1\.|2\.)" | tail -n 6 | tr '\n' ' ' || echo "(not found)"; echo
+          done
+          echo "=== Modrinth: 1.12.2 candidates"
+          for slug in betterquesting better-questing ftb-quests patchouli mixinbooter; do
+            echo "-- $slug"
+            curl -fsSL --max-time 30 "https://api.modrinth.com/v2/project/$slug" -o p.json 2>/dev/null && python3 - <<'PY'
+          import json
+          p = json.load(open("p.json"))
+          print(p.get("title"), "|", p.get("game_versions", [])[:8], "...", p.get("loaders"))
+          PY
+            curl -fsSL --max-time 30 -G "https://api.modrinth.com/v2/project/$slug/version" --data-urlencode 'game_versions=["1.12.2"]' -o v.json 2>/dev/null && python3 - <<'PY'
+          import json
+          for v in json.load(open("v.json"))[:4]:
+              f = v["files"][0]
+              print("  ", v["version_number"], v["loaders"], f["url"], f["hashes"].get("sha1"))
+          PY
+          done
+          echo "=== GitHub releases: BetterQuesting"
+          for repo in BetterQuesting/BetterQuesting Funwayguy/BetterQuesting; do
+            curl -fsSL --max-time 30 "https://api.github.com/repos/$repo/releases?per_page=3" -o r.json 2>/dev/null && python3 - <<'PY'
+          import json
+          for r in json.load(open("r.json")):
+              print("  ", r["tag_name"], [a["browser_download_url"] for a in r.get("assets", [])][:3])
+          PY
+          done
+          echo "=== cursemaven probe"
+          curl -s -o /dev/null -w "%{http_code}  cursemaven root\n" -I --max-time 30 https://www.cursemaven.com/
