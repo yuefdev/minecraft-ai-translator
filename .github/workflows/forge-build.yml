@@ -21,10 +21,24 @@ jobs:
           distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-      - name: Build Forge jar
+      - name: Core unit tests
         run: |
           chmod +x gradlew
-          ./gradlew :forge:build --stacktrace --no-daemon
+          set +e
+          ./gradlew :core:test --no-daemon --console=plain > core-test.log 2>&1
+          code=$?
+          echo "::group::core test summary"
+          grep -E "PASSED|FAILED|SKIPPED|tests completed|BUILD" core-test.log | tail -n 120
+          echo "::endgroup::"
+          exit $code
+      - name: Build Forge jar
+        run: |
+          set +e
+          ./gradlew :forge:build --no-daemon --console=plain > forge-build.log 2>&1
+          code=$?
+          echo "=== filtered build output (exit $code) ==="
+          grep -nE "error:|warning: \[|Could not|What went wrong|FAILED|BUILD (SUCCESSFUL|FAILED)|Caused by|InvalidInjection|Mixin|cannot find symbol|symbol:|location:" forge-build.log | head -n 80
+          exit $code
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -33,7 +47,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: reports
+          name: logs-and-reports
           path: |
-            **/build/reports
-            **/build/test-results
+            core-test.log
+            forge-build.log
+            core/build/reports

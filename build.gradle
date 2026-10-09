@@ -16,7 +16,7 @@ ext {
     v_changelog = file("CHANGELOG_PUBLISH.md").getText()
 }
 
-subprojects {
+configure(subprojects.findAll { it.name != "core" }) {
     apply plugin: "dev.architectury.loom"
 
     loom {
@@ -32,7 +32,7 @@ subprojects {
     }
 }
 
-allprojects {
+configure(allprojects.findAll { it.name != "core" }) {
     apply plugin: "java"
     apply plugin: "architectury-plugin"
     apply plugin: "maven-publish"
@@ -58,6 +58,14 @@ allprojects {
         maven { url 'https://maven.blamejared.com' }
         maven { url "https://maven.architectury.dev/" }
         maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
+
+        maven {
+            url "https://maven.ftb.dev/releases"
+            content {
+                includeGroup "dev.latvian.mods"
+                includeGroup "dev.ftb.mods"
+            }
+        }
 
         maven {
             url "https://maven.saps.dev/releases"

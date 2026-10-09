@@ -1,0 +1,4 @@
+// Standalone entry point so the Minecraft-independent core can be built and tested
+// without Forge/Architectury (e.g. `gradle -p core test`). When building the whole
+// project from the repository root this file is ignored.
+rootProject.name = "autotranslation-core"
