@@ -1,0 +1,137 @@
+name: Real 1.12.2 install
+
+# The other start-up checks run inside the development environment (deobfuscated names, coremod passed on the
+# command line). This one checks the jar a player actually installs: the reobfuscated release jar goes into the
+# mods/ folder of a real Forge 1.12.2 installation (installed by the portablemc launcher), Forge has to find the
+# coremod through the jar's manifest, and the game runs on obfuscated names.
+on:
+  push:
+    branches:
+      - 'claude/**'
+    paths:
+      - 'versions/forge-1.12.2/**'
+      - 'core/**'
+      - '.github/workflows/prod-1122.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: prod1122-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  real-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [plain, with-betterquesting-ftbquests-patchouli]
+    steps:
+      - name: Check out
+        run: git clone --quiet --depth 1 --branch "$GITHUB_REF_NAME" "https://x-access-token:${{ github.token }}@github.com/$GITHUB_REPOSITORY.git" .
+
+      - name: Build the release jar
+        run: |
+          export JAVA_HOME=$JAVA_HOME_25_X64; export PATH=$JAVA_HOME/bin:$PATH
+          curl -fsSL https://services.gradle.org/distributions/gradle-9.8.1-bin.zip -o /tmp/gradle.zip
+          sudo unzip -q /tmp/gradle.zip -d /opt
+          /opt/gradle-9.8.1/bin/gradle -p versions/forge-1.12.2 build --no-daemon --console=plain > build.log 2>&1 || { tail -n 40 build.log; exit 1; }
+          ls -l versions/forge-1.12.2/build/libs
+
+      - name: Inspect the release jar
+        run: |
+          J=$(ls versions/forge-1.12.2/build/libs/AutoTranslation-*+mc1.12.2-forge.jar | grep -v -- -dev)
+          echo "jar: $J ($(stat -c %s "$J") bytes)"
+          echo "--- manifest"; unzip -p "$J" META-INF/MANIFEST.MF | tr -d '\r'
+          echo "--- classes: $(unzip -l "$J" | grep -c '\.class') | engine classes: $(unzip -l "$J" | grep -c 'autotranslation/core/.*\.class')"
+          mkdir -p /tmp/jar && unzip -q -o "$J" -d /tmp/jar
+          echo "--- Minecraft references in GenericGate (a release jar uses SRG names: func_/field_)"
+          "$JAVA_HOME_8_X64/bin/javap" -c -p -cp /tmp/jar me.langyue.autotranslation.legacy.GenericGate | grep -oE "(Field|Method) net/minecraft/[^ ]+" | sort -u | head -n 6
+          echo "$J" > jar.path
+
+      - name: Install the launcher, a headless display and software OpenGL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb x11-xserver-utils libgl1-mesa-dri libglx-mesa0 libopenal1 libxrandr2 libxinerama1 libxcursor1 libxi6 libxxf86vm1 > /dev/null
+          python3 -m pip install --quiet --user portablemc==4.4.1
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Put the mods in place
+        run: |
+          mkdir -p game/mods
+          cp "$(cat jar.path)" game/mods/
+          if [ "${{ matrix.variant }}" != "plain" ]; then
+            # production (obfuscated) builds of the optional mods, the same files as on CurseForge
+            for m in better-questing-238856/2950248 ftb-quests-289412/3156637 ftblib-237167/2985811 item-filters-309674/3003364 patchouli-306770/3162874; do
+              name=${m%%/*}; file=${m##*/}
+              curl -fsSL --retry 3 "https://cursemaven.com/curse/maven/$name/$file/$name-$file.jar" -o "game/mods/$name-$file.jar"
+            done
+          fi
+          ls -l game/mods
+
+      - name: Start Forge 1.12.2 with the jar and run the checks
+        continue-on-error: true
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set +e
+          JVM_ARGS="-Xmx2G -Dautotranslation.smoketest=true -Dautotranslation.smoketest.output=$PWD/game/result.json"
+          ( while sleep 120; do echo "--- progress $(date +%T): $(wc -l < run.log) log lines ---"; done ) &
+          ticker=$!
+          for attempt in 1 2; do
+            timeout 1500 xvfb-run -a -s "-screen 0 1280x720x24" portablemc --main-dir "$HOME/.minecraft-ci" --work-dir "$PWD/game" \
+              start forge:1.12.2 -u SmokeTester --jvm "$JAVA_HOME_8_X64/bin/java" --jvm-args="$JVM_ARGS" > run.log 2>&1
+            echo "=== attempt $attempt exit code: $? ==="
+            if [ ! -f game/result.json ] && grep -qiE "connection reset|timed out|temporary failure|HTTP Error 5|download.*fail" run.log; then
+              echo "transient download problem, retrying once"; continue
+            fi
+            break
+          done
+          kill $ticker 2>/dev/null
+          exit 0
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-1.12.2-${{ matrix.variant }}
+          path: |
+            run.log
+            game/result.json
+            game/logs/latest.log
+            game/logs/fml-client-latest.log
+            game/crash-reports
+          if-no-files-found: ignore
+
+      - name: Result summary
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          echo "##### REAL 1.12.2 INSTALL SUMMARY ($VARIANT)"
+          if [ ! -f game/result.json ]; then
+            echo "NO RESULT FILE - the game did not reach the check phase"
+            grep -nE "Exception|Error|FATAL|coremod|AutoTranslation|Traceback" run.log game/logs/fml-client-latest.log 2>/dev/null | grep -v "ALSA\|AL lib" | head -n 30 | cut -c1-260
+            echo "--- last lines"; tail -n 15 run.log | cut -c1-240
+            exit 1
+          fi
+          echo "--- coremod and mod loading"
+          grep -hE "AutoTranslation|autotranslation" game/logs/fml-client-latest.log 2>/dev/null | grep -iE "coremod|plugin|patched|Found|loading" | head -n 12 | cut -c1-240
+          python3 - <<'PY'
+          import json, os, sys
+          r = json.load(open("game/result.json"))
+          for c in r["checks"]:
+              print(("PASS " if c["ok"] else "FAIL ") + c["name"] + (" :: " + c["detail"][:300] if c.get("detail") else ""))
+          print("ok =", r["ok"], "| provider requests =", r["providerRequests"], "| ftbquests =", r["ftbquestsLoaded"], "| patchouli =", r["patchouliLoaded"], "| betterquesting =", r.get("betterquestingLoaded"))
+          want_mods = os.environ["VARIANT"] != "plain"
+          bad = []
+          if not r["ok"]: bad.append("at least one check failed")
+          if r["ftbquestsLoaded"] != want_mods or r["patchouliLoaded"] != want_mods or bool(r.get("betterquestingLoaded")) != want_mods:
+              bad.append("unexpected optional mod set")
+          if r["providerRequests"] < 1: bad.append("pipeline sent no request to the fake provider")
+          if not r["authorizationHeaderSent"]: bad.append("API key was not sent as a bearer token")
+          if bad:
+              print("REAL INSTALL TEST FAILED:", "; ".join(bad)); sys.exit(1)
+          print("REAL INSTALL TEST PASSED")
+          PY
