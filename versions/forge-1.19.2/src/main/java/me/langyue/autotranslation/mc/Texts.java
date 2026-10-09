@@ -2,8 +2,8 @@ package me.langyue.autotranslation.mc;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.TextComponent;
-import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.network.chat.contents.LiteralContents;
+import net.minecraft.network.chat.contents.TranslatableContents;
 
 /** The few text component operations whose API differs between Minecraft versions. */
 public final class Texts {
@@ -16,6 +16,6 @@ public final class Texts {
 
     /** A plain text or a translatable component (no children, no nested arguments to preserve). */
     public static boolean isSimple(Component component) {
-        return component instanceof TextComponent || component instanceof TranslatableComponent;
+        return component.getContents() instanceof LiteralContents || component.getContents() instanceof TranslatableContents;
     }
 }

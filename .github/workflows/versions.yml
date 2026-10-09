@@ -30,6 +30,8 @@ jobs:
             java: '17'
           - module: forge-1.18.2
             java: '17'
+          - module: forge-1.16.5
+            java: '17'
           - module: neoforge-1.21.1
             java: '21'
             gradle: '8.14.3'
@@ -42,13 +44,19 @@ jobs:
       - uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: ${{ matrix.gradle || 'wrapper' }}
+          cache-disabled: true
       - name: Build
         run: |
           chmod +x gradlew
           if [ "${{ matrix.gradle }}" != "" ]; then GRADLE=gradle; else GRADLE=./gradlew; fi
-          $GRADLE -p versions/${{ matrix.module }} build --no-daemon --console=plain
-      - name: List the jar
-        run: ls -l versions/${{ matrix.module }}/build/libs/
+          set -o pipefail
+          $GRADLE -p versions/${{ matrix.module }} build --no-daemon --console=plain 2>&1 | tee build.log
+      - name: Result summary
+        if: always()
+        run: |
+          echo "##### BUILD SUMMARY ${{ matrix.module }}"
+          ls -l versions/${{ matrix.module }}/build/libs/ 2>&1 | tail -n 5
+          grep -nE "error:|warning: \[|FAILED|What went wrong|Could not resolve|not found" -A3 build.log | head -n 60
       - uses: actions/upload-artifact@v4
         with:
           name: jar-${{ matrix.module }}
@@ -60,12 +68,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [forge-1.19.2, forge-1.18.2, neoforge-1.21.1]
+        module: [forge-1.19.2, forge-1.18.2, forge-1.16.5, neoforge-1.21.1]
         variant: [plain, with-ftbquests-patchouli]
         include:
           - module: forge-1.19.2
             java: '17'
           - module: forge-1.18.2
+            java: '17'
+          - module: forge-1.16.5
             java: '17'
           - module: neoforge-1.21.1
             java: '21'
@@ -79,6 +89,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: ${{ matrix.gradle || 'wrapper' }}
+          cache-disabled: true
       - name: Install headless display and software OpenGL
         run: |
           sudo apt-get update -qq
@@ -95,30 +106,40 @@ jobs:
           extra=""
           if [ "${{ matrix.variant }}" = "with-ftbquests-patchouli" ]; then extra="-PsmokeMods=true"; fi
           set +e
-          ( while sleep 60; do echo "--- progress $(date +%T): $(wc -l < smoke.log) log lines ---"; tail -n 2 smoke.log | cut -c1-220; ls $MODULE/build/smoke-run/logs/latest.log > /dev/null 2>&1 && grep -E "smoke|Smoke|AutoTranslation|Mixin|ERROR" $MODULE/build/smoke-run/logs/latest.log | tail -n 3 | cut -c1-220; done ) &
+          ( while sleep 90; do echo "--- progress $(date +%T): $(wc -l < smoke.log) log lines ---"; tail -n 1 smoke.log | cut -c1-200; done ) &
           ticker=$!
-          timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" $GRADLE -p $MODULE runSmokeClient $extra --no-daemon --console=plain > smoke.log 2>&1
-          code=$?
+          for attempt in 1 2; do
+            timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" $GRADLE -p $MODULE runSmokeClient $extra --no-daemon --console=plain > smoke.log 2>&1
+            code=$?
+            echo "=== attempt $attempt gradle exit code: $code ==="
+            # a download hiccup of Mojang's or a maven host is not a result: try once more
+            if [ ! -f $MODULE/build/smoke/result.json ] && grep -qE "DownloadException|Could not GET|Could not resolve|Connection reset|Read timed out" smoke.log; then
+              echo "transient download problem, retrying once"; continue
+            fi
+            break
+          done
           kill $ticker 2>/dev/null
-          echo "=== gradle exit code: $code ==="
-          if [ -f $MODULE/build/smoke/result.json ]; then
-            python3 - <<'PY'
-          import json, os
-          r = json.load(open(os.environ["MODULE"] + "/build/smoke/result.json"))
-          for c in r["checks"]:
-              print(("PASS " if c["ok"] else "FAIL ") + c["name"] + (" :: " + c["detail"] if c.get("detail") else ""))
-          print("ok =", r["ok"], "| provider requests =", r["providerRequests"], "| ftbquests =", r["ftbquestsLoaded"], "| patchouli =", r["patchouliLoaded"])
-          PY
-          else
+          exit 0
+      - name: Result summary
+        if: always()
+        env:
+          MODULE: versions/${{ matrix.module }}
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          echo "##### SMOKE SUMMARY ${{ matrix.module }} / ${{ matrix.variant }}"
+          if [ ! -f $MODULE/build/smoke/result.json ]; then
             echo "NO RESULT FILE - the game did not reach the check phase"
-            grep -nE "Exception|ERROR|FATAL|Mixin apply|InvalidInjection|Missing|crash|error:" smoke.log | head -n 40
-            tail -n 25 smoke.log
+            grep -nE "error:|Exception|ERROR|FATAL|FAILED|What went wrong|Mixin apply|InvalidInjection|Missing or unsupported|crash|Could not" smoke.log | head -n 40 | cut -c1-260
+            echo "--- last lines"; tail -n 12 smoke.log | cut -c1-260
             exit 1
           fi
           python3 - <<'PY'
           import json, os, sys
           r = json.load(open(os.environ["MODULE"] + "/build/smoke/result.json"))
-          want_mods = "${{ matrix.variant }}" == "with-ftbquests-patchouli"
+          for c in r["checks"]:
+              print(("PASS " if c["ok"] else "FAIL ") + c["name"] + (" :: " + c["detail"][:300] if c.get("detail") else ""))
+          print("ok =", r["ok"], "| provider requests =", r["providerRequests"], "| ftbquests =", r["ftbquestsLoaded"], "| patchouli =", r["patchouliLoaded"])
+          want_mods = os.environ["VARIANT"] == "with-ftbquests-patchouli"
           bad = []
           if not r["ok"]: bad.append("at least one check failed")
           if r["ftbquestsLoaded"] != want_mods or r["patchouliLoaded"] != want_mods: bad.append("unexpected optional mod set")
