@@ -71,7 +71,7 @@ public final class FtbQuestsSupport {
         List<Component> result = new ArrayList<>(snapshot.size());
         for (int i = 0; i < snapshot.size(); i++) {
             String line = translated.get(i);
-            result.add(line.equals(snapshot.get(i)) ? TextUtils.parseRawText(line) : build(line, snapshot.get(i)));
+            result.add(line.equals(snapshot.get(i)) ? markTranslated(TextUtils.parseRawText(line)) : build(line, snapshot.get(i)));
         }
         return List.copyOf(result);
     }
@@ -85,12 +85,21 @@ public final class FtbQuestsSupport {
         return translated == null ? raw : translated;
     }
 
+    /** The dedicated hook already did this text's translation: the generic hard-coded-text path must leave it alone. */
+    public static Component markTranslated(Component component) {
+        if (component instanceof me.langyue.autotranslation.accessor.MutableComponentAccessor) {
+            ((me.langyue.autotranslation.accessor.MutableComponentAccessor) component).at$shouldTranslate(false);
+        }
+        for (Component sibling : component.getSiblings()) markTranslated(sibling);
+        return component;
+    }
+
     private static Component build(String translated, String raw) {
         if (translated == null) return null;
-        Component component = TextUtils.parseRawText(translated);
+        Component component = markTranslated(TextUtils.parseRawText(translated));
         if (TranslationRuntime.showOriginal()) {
-            component = component.copy().append(Component.literal(" (" + TextSupport.plainFtb(raw) + ")")
-                    .withStyle(ChatFormatting.GRAY));
+            component = markTranslated(component.copy().append(Component.literal(" (" + TextSupport.plainFtb(raw) + ")")
+                    .withStyle(ChatFormatting.GRAY)));
         }
         return component;
     }

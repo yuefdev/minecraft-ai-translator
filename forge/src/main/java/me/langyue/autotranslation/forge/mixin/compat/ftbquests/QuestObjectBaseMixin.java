@@ -40,7 +40,7 @@ public abstract class QuestObjectBaseMixin {
             this.at$titleGeneration = generation;
         }
         if (this.at$title != null) {
-            cir.setReturnValue(this.at$title.copy());
+            cir.setReturnValue(FtbQuestsSupport.markTranslated(this.at$title.copy()));
         }
     }
 }

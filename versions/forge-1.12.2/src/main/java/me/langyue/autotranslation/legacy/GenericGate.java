@@ -10,6 +10,7 @@ import net.minecraft.client.gui.GuiScreen;
 final class GenericGate {
     private static final String[] BLOCKED = {
             "net.minecraft.client.gui.GuiChat",
+            "net.minecraft.client.gui.GuiMainMenu",
             "net.minecraft.client.gui.GuiScreenBook",
             "net.minecraft.client.gui.inventory.GuiEditSign",
             "net.minecraft.client.gui.inventory.GuiCommandBlock",

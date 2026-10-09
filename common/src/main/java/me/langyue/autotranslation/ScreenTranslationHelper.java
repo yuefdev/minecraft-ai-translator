@@ -35,6 +35,7 @@ public class ScreenTranslationHelper {
     private static final Set<String> DISABLED = new LinkedHashSet<>();
     private static final Set<String> BLACKLIST = new LinkedHashSet<>() {{
         add(ChatScreen.class.getName());
+        add(TitleScreen.class.getName());
         add(BookEditScreen.class.getName());
         add(SignEditScreen.class.getName());
         add(HangingSignEditScreen.class.getName());
