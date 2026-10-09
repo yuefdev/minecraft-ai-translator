@@ -29,17 +29,15 @@ import java.util.function.BooleanSupplier;
  * that the game still started and that its hooks were skipped.
  */
 public final class SmokeTest {
-    private static final String ORIGINAL_TITLE = "Collect &6Iron&r Ingots";
-
-    private static final List<JsonObject> CHECKS = new ArrayList<>();
+    static final List<JsonObject> CHECKS = new ArrayList<>();
     private static int ticks = 0;
     private static boolean started = false;
     private static boolean finished = false;
     private static FakeOpenAiServer server;
-    private static final List<Pending> WAITING = new ArrayList<>();
+    static final List<Pending> WAITING = new ArrayList<>();
 
     /** A condition that is polled every client tick until it holds or its tick budget runs out. */
-    private static final class Pending {
+    static final class Pending {
         final String name;
         final BooleanSupplier condition;
         int remaining;
@@ -117,8 +115,8 @@ public final class SmokeTest {
         check("provider configured against local fake endpoint", TranslationRuntime.providerConfigured(), "");
 
         checkMixinsApplied();
-        checkOptionalMod("ftbquests", "dev.ftb.mods.ftbquests.quest.QuestObjectBase", SmokeTest::ftbQuestsFunctional);
-        checkOptionalMod("patchouli", "vazkii.patchouli.client.book.BookPage", SmokeTest::patchouliFunctional);
+        checkOptionalMod("ftbquests", "dev.ftb.mods.ftbquests.quest.QuestObjectBase", () -> SmokeTestFtb.run());
+        checkOptionalMod("patchouli", "vazkii.patchouli.client.book.BookPage", () -> SmokeTestPatchouli.run());
     }
 
     private static void checkMixinsApplied() {
@@ -137,107 +135,6 @@ public final class SmokeTest {
         functional.run();
     }
 
-    // ------------------------------------------------------------------------------------------ FTB Quests
-
-    private static void ftbQuestsFunctional() {
-        expectField("dev.ftb.mods.ftbquests.quest.QuestObjectBase", "at$title", "ftbquests: QuestObjectBase mixin applied");
-        expectField("dev.ftb.mods.ftbquests.quest.Quest", "at$description", "ftbquests: Quest mixin applied");
-        expectMethod("dev.ftb.mods.ftbquests.client.gui.quests.ChapterPanel$ChapterButton", "translateChapterSubtitle", "ftbquests: chapter button redirect applied");
-        try {
-            dev.ftb.mods.ftbquests.client.ClientQuestFile file = new dev.ftb.mods.ftbquests.client.ClientQuestFile();
-            var group = new dev.ftb.mods.ftbquests.quest.ChapterGroup(0x10L, file);
-            var chapter = new dev.ftb.mods.ftbquests.quest.Chapter(0x20L, file, group);
-            chapter.setRawTitle("Getting Started");
-            var quest = new dev.ftb.mods.ftbquests.quest.Quest(0x30L, chapter);
-            quest.setRawTitle(ORIGINAL_TITLE);
-            quest.setRawSubtitle("A short subtitle for this quest");
-            quest.getRawDescription().add("Mine some iron ore and smelt it in a furnace.");
-            quest.getRawDescription().add("{@pagebreak}");
-            quest.getRawDescription().add("Bring 25 ingots back to the village.");
-            String codeBefore = quest.getCodeString();
-            Component first = quest.getTitle();
-            check("ftbquests: original title is shown while translation is pending",
-                    first.getString().contains("Collect") && !first.getString().startsWith("TR|"), first.getString());
-            WAITING.add(new Pending("ftbquests: title translated through FTB Quests -> pipeline -> provider",
-                    () -> quest.getTitle().getString().startsWith("TR| Collect Iron Ingots"), 600,
-                    () -> check("ftbquests: title translated through FTB Quests -> pipeline -> provider", false,
-                            "title stayed: " + quest.getTitle().getString() + " | last error: " + TranslationRuntime.service().stats().lastError())));
-            WAITING.add(new Pending("ftbquests: description translated with page break and line count preserved",
-                    () -> {
-                        var lines = quest.getDescription();
-                        return lines.size() == 3 && lines.get(0).getString().startsWith("TR| Mine some iron")
-                                && lines.get(1).getString().equals("{@pagebreak}")
-                                && lines.get(2).getString().startsWith("TR| Bring 25 ingots");
-                    }, 600,
-                    () -> check("ftbquests: description translated with page break and line count preserved", false,
-                            quest.getDescription().stream().map(Component::getString).toList().toString())));
-            WAITING.add(new Pending("ftbquests: subtitle translated",
-                    () -> quest.getSubtitle().getString().startsWith("TR| A short subtitle"), 600,
-                    () -> check("ftbquests: subtitle translated", false, quest.getSubtitle().getString())));
-            WAITING.add(new Pending("ftbquests: data untouched (raw text, id, colour style)",
-                    () -> {
-                        boolean raw = quest.getRawTitle().equals(ORIGINAL_TITLE)
-                                && quest.getRawSubtitle().equals("A short subtitle for this quest")
-                                && quest.getRawDescription().equals(List.of("Mine some iron ore and smelt it in a furnace.", "{@pagebreak}", "Bring 25 ingots back to the village."))
-                                && quest.getCodeString().equals(codeBefore);
-                        boolean gold = quest.getTitle().getSiblings().stream().anyMatch(s ->
-                                s.getString().equals("Iron") && s.getStyle().getColor() != null
-                                        && s.getStyle().getColor().equals(net.minecraft.network.chat.TextColor.fromLegacyFormat(net.minecraft.ChatFormatting.GOLD)));
-                        return raw && gold && quest.getTitle().getString().startsWith("TR|");
-                    }, 600,
-                    () -> check("ftbquests: data untouched (raw text, id, colour style)", false, quest.getTitle().toString())));
-        } catch (Throwable t) {
-            check("ftbquests: functional test setup", false, t.toString());
-        }
-    }
-
-    // -------------------------------------------------------------------------------------------- Patchouli
-
-    private static void patchouliFunctional() {
-        expectMethod("vazkii.patchouli.client.book.BookEntry", "translateName", "patchouli: BookEntry.getName hooked");
-        expectMethod("vazkii.patchouli.client.book.BookCategory", "translateName", "patchouli: BookCategory.getName hooked");
-        expectMethod("vazkii.patchouli.client.book.BookPage", "translateLabel", "patchouli: BookPage.i18n hooked");
-        expectMethod("vazkii.patchouli.client.book.gui.BookTextRenderer", "translateBeforeLayout", "patchouli: BookTextRenderer hooked before layout");
-        try {
-            var book = allocateBook();
-            var page = new vazkii.patchouli.client.book.page.PageText();
-            page.book = book;
-            String before = page.i18n("Iron Age");
-            check("patchouli: original label shown while translation is pending", before.equals("Iron Age"), before);
-            WAITING.add(new Pending("patchouli: page title translated through BookPage.i18n -> pipeline -> provider",
-                    () -> page.i18n("Iron Age").equals("TR| Iron Age"), 600,
-                    () -> check("patchouli: page title translated through BookPage.i18n -> pipeline -> provider", false,
-                            page.i18n("Iron Age") + " | last error: " + TranslationRuntime.service().stats().lastError())));
-            String markup = "Smelt the ore in a $(item)furnace$(), then $(l:smoke:book/entry)read more$(/l).$(br)Done.";
-            var original = Component.literal(markup);
-            me.langyue.autotranslation.tr.patchouli.PatchouliSupport.translatePageText(book, original);
-            WAITING.add(new Pending("patchouli: page markup commands preserved in the translation",
-                    () -> {
-                        Component translated = me.langyue.autotranslation.tr.patchouli.PatchouliSupport.translatePageText(book, original);
-                        String text = translated.getString();
-                        return text.startsWith("TR| ") && text.contains("$(item)furnace$()")
-                                && text.contains("$(l:smoke:book/entry)read more$(/l)") && text.contains("$(br)");
-                    }, 600,
-                    () -> check("patchouli: page markup commands preserved in the translation", false,
-                            me.langyue.autotranslation.tr.patchouli.PatchouliSupport.translatePageText(book, original).getString())));
-        } catch (Throwable t) {
-            check("patchouli: functional test setup", false, t.toString());
-        }
-    }
-
-    /** A Book without running its heavy constructor; only the fields our code reads are filled in. */
-    private static vazkii.patchouli.common.book.Book allocateBook() throws Exception {
-        Field unsafeField = Class.forName("sun.misc.Unsafe").getDeclaredField("theUnsafe");
-        unsafeField.setAccessible(true);
-        Object unsafe = unsafeField.get(null);
-        Method allocate = unsafe.getClass().getMethod("allocateInstance", Class.class);
-        var book = (vazkii.patchouli.common.book.Book) allocate.invoke(unsafe, vazkii.patchouli.common.book.Book.class);
-        Field id = vazkii.patchouli.common.book.Book.class.getField("id");
-        id.setAccessible(true);
-        id.set(book, new net.minecraft.resources.ResourceLocation("smoke", "book"));
-        return book;
-    }
-
     // ----------------------------------------------------------------------------------------------- helpers
 
     private static boolean classExists(String name) {
@@ -249,7 +146,7 @@ public final class SmokeTest {
         }
     }
 
-    private static void expectField(String className, String field, String name) {
+    static void expectField(String className, String field, String name) {
         try {
             Class.forName(className, false, SmokeTest.class.getClassLoader()).getDeclaredField(field);
             check(name, true, "");
@@ -258,7 +155,7 @@ public final class SmokeTest {
         }
     }
 
-    private static void expectMethod(String className, String fragment, String name) {
+    static void expectMethod(String className, String fragment, String name) {
         try {
             Class<?> cls = Class.forName(className, false, SmokeTest.class.getClassLoader());
             boolean found = Arrays.stream(cls.getDeclaredMethods()).anyMatch(m -> m.getName().contains(fragment));
@@ -268,7 +165,7 @@ public final class SmokeTest {
         }
     }
 
-    private static void check(String name, boolean ok, String detail) {
+    static void check(String name, boolean ok, String detail) {
         JsonObject o = new JsonObject();
         o.addProperty("name", name);
         o.addProperty("ok", ok);

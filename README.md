@@ -1,5 +1,8 @@
 # AutoTranslation
 
+> **Türkçe çeviri hattı, FTB Quests ve Patchouli entegrasyonu (Minecraft 1.20.1, Forge):** bkz. [README_TR.md](README_TR.md).
+> Özgün proje ve atıflar: [NOTICE.md](NOTICE.md).
+
 The following is a machine translation.
 
 由于很多 Mod 只有英文，非英语母语玩家玩起来可能有些吃力，Mod 作者接受翻译 PR 的时间不定，且不一定有人翻译。为了解决这些痛点，开发了这个

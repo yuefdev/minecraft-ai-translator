@@ -13,8 +13,16 @@ dependencies {
     modCompileOnly("dev.ftb.mods:ftb-quests:${rootProject.ftb_quests_version}") { transitive false }
     modCompileOnly("dev.ftb.mods:ftb-teams:${rootProject.ftb_teams_version}") { transitive false }
 
-    // Minecraft-independent translation engine (masking, cache, providers, queue).
-    api project(":core")
+}
+
+// The Minecraft-independent translation engine lives in ../core and is compiled into this module, so that it ships
+// inside the common jar (Architectury's production transform needs to see every class it references). The same
+// sources are also built and unit-tested on their own: ./gradlew -p core test
+sourceSets {
+    main {
+        java.srcDir "../core/src/main/java"
+        resources.srcDir "../core/src/main/resources"
+    }
 }
 
 architectury {

@@ -53,9 +53,6 @@ dependencies {
         exclude(group: "me.shedaniel.cloth")
     }
     shadowCommon(project(path: ":common", configuration: "transformProductionForge")) { transitive = false }
-    // The translation engine contains no Minecraft code, so it is bundled as-is.
-    shadowCommon(project(path: ":core")) { transitive = false }
-    implementation project(":core")
 }
 
 // -PsmokeMods puts the optional integrations on the runtime classpath of runSmokeClient.

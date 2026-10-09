@@ -8,7 +8,6 @@ pluginManagement {
     }
 }
 
-include("core")
 include("common")
 include("forge")
 // The first delivery targets Forge 1.20.1 only. The Fabric module is kept in the repository but is not part

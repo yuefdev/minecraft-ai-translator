@@ -16,7 +16,7 @@ ext {
     v_changelog = file("CHANGELOG_PUBLISH.md").getText()
 }
 
-configure(subprojects.findAll { it.name != "core" }) {
+subprojects {
     apply plugin: "dev.architectury.loom"
 
     loom {
@@ -32,7 +32,7 @@ configure(subprojects.findAll { it.name != "core" }) {
     }
 }
 
-configure(allprojects.findAll { it.name != "core" }) {
+allprojects {
     apply plugin: "java"
     apply plugin: "architectury-plugin"
     apply plugin: "maven-publish"
