@@ -21,24 +21,31 @@ jobs:
           distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+
+      # The translation engine has no Minecraft dependency, so it is tested as its own build.
       - name: Core unit tests
         run: |
           chmod +x gradlew
           set +e
-          ./gradlew :core:test --no-daemon --console=plain > core-test.log 2>&1
+          ./gradlew -p core test --no-daemon --console=plain > core-test.log 2>&1
           code=$?
-          echo "::group::core test summary"
-          grep -E "PASSED|FAILED|SKIPPED|tests completed|BUILD" core-test.log | tail -n 120
-          echo "::endgroup::"
+          echo "=== core tests (exit $code) ==="
+          grep -cE " PASSED$" core-test.log | sed 's/^/passed: /'
+          grep -E " (FAILED|SKIPPED)$" core-test.log | head -n 40
+          grep -E -A12 "What went wrong" core-test.log | head -n 40
           exit $code
+
       - name: Build Forge jar
         run: |
           set +e
           ./gradlew :forge:build --no-daemon --console=plain > forge-build.log 2>&1
           code=$?
-          echo "=== filtered build output (exit $code) ==="
-          grep -nE "error:|warning: \[|Could not|What went wrong|FAILED|BUILD (SUCCESSFUL|FAILED)|Caused by|InvalidInjection|Mixin|cannot find symbol|symbol:|location:" forge-build.log | head -n 80
+          echo "=== forge build (exit $code) ==="
+          grep -E -A14 "What went wrong" forge-build.log | head -n 50
+          grep -E -B1 -A3 "error:" forge-build.log | head -n 80
+          grep -E "BUILD (SUCCESSFUL|FAILED)" forge-build.log
           exit $code
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -341,7 +341,7 @@ public final class TranslationService implements AutoCloseable {
             Collections.sort(b);
             if (!a.equals(b)) return "placeholder mismatch";
         }
-        RestoreResult r = masker.restore(masked, reorderToSourceTokens(masked, candidate));
+        RestoreResult r = masker.restore(masked, reorderToSourceTokens(masked, candidate), false);
         return r.ok() ? null : r.reason();
     }
 
@@ -361,9 +361,10 @@ public final class TranslationService implements AutoCloseable {
             }
             if (target < 0) return text;
             used[target] = true;
-            text = text.replace("[[P" + i + "]]", "[[P" + target + "]]");
+            // two phases so that swapping two tokens cannot rewrite the same token twice
+            text = text.replace("[[P" + i + "]]", "[[Q" + target + "]]");
         }
-        return text;
+        return text.replace("[[Q", "[[P");
     }
 
     /**

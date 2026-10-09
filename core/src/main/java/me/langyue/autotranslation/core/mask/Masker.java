@@ -158,6 +158,14 @@ public final class Masker {
     // ----------------------------------------------------------------------------------------------- restoring
 
     public RestoreResult restore(MaskedText source, String translated) {
+        return restore(source, translated, true);
+    }
+
+    /**
+     * @param checkCommentary reject answers that start like chatter ("Sure, here is..."). Disabled for text the
+     *                        user typed themselves, which is trusted to be a translation.
+     */
+    public RestoreResult restore(MaskedText source, String translated, boolean checkCommentary) {
         if (source.unsafe()) return RestoreResult.failure("source contains token-like text");
         if (translated == null || translated.isBlank()) return RestoreResult.failure("empty translation");
 
@@ -182,7 +190,7 @@ public final class Masker {
         String lowerTarget = visibleTarget.strip().toLowerCase(Locale.ROOT);
         String lowerSource = visibleSource.strip().toLowerCase(Locale.ROOT);
         for (String preamble : PREAMBLES) {
-            if (lowerTarget.startsWith(preamble) && !lowerSource.startsWith(preamble)) {
+            if (checkCommentary && lowerTarget.startsWith(preamble) && !lowerSource.startsWith(preamble)) {
                 return RestoreResult.failure("answer starts with commentary");
             }
         }
