@@ -19,7 +19,7 @@ jobs:
             echo "=== $1"
             curl -fsSL --max-time 60 "$2" -o meta.xml || { echo "(could not fetch $2)"; return; }
             grep -oE "<version>[^<]+</version>" meta.xml | sed -E 's/<[^>]+>//g' | grep -E "$3" | sort -V \
-              | awk -v n=3 '{ p=$0; sub(/[-.].*/, "", p); c[p]++; l[p]=l[p] " " $0; a[p]=a[p] ? a[p] " " $0 : $0 }
+              | awk -v n=3 -v mode="${4:-dot}" '{ p=$0; if (mode=="dash") sub(/-.*/, "", p); else sub(/[-.].*/, "", p); a[p]=a[p] ? a[p] " " $0 : $0 }
                             END { for (k in a) { m=split(a[k], x, " "); s=""; for (i=(m>n?m-n+1:1); i<=m; i++) s=s " " x[i]; print "  " k ":" s } }' | sort
           }
           show "FTB Quests forge"     https://maven.ftb.dev/releases/dev/ftb/mods/ftb-quests-forge/maven-metadata.xml "^(1605|1802|1902|2001)\."
@@ -29,8 +29,8 @@ jobs:
           show "FTB Library neoforge" https://maven.ftb.dev/releases/dev/ftb/mods/ftb-library-neoforge/maven-metadata.xml "^2[0-9]{3}\."
           show "FTB Teams forge"      https://maven.ftb.dev/releases/dev/ftb/mods/ftb-teams-forge/maven-metadata.xml "^(1605|1802|1902|2001)\."
           show "FTB Teams neoforge"   https://maven.ftb.dev/releases/dev/ftb/mods/ftb-teams-neoforge/maven-metadata.xml "^2[0-9]{3}\."
-          show "Patchouli"            https://maven.blamejared.com/vazkii/patchouli/Patchouli/maven-metadata.xml "^1\.(16|18|19|20|21)|^[0-9]+\.[0-9]+-"
-          show "Forge (all MC)"       https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml "^(1\.12\.2|1\.16\.5|1\.18\.2|1\.19\.2|1\.19\.4|1\.20\.1|1\.20\.4|1\.20\.6|1\.21\.1)-"
+          show "Patchouli"            https://maven.blamejared.com/vazkii/patchouli/Patchouli/maven-metadata.xml "^1\.(16|18|19|20|21)|^[0-9]+\.[0-9]+(\.[0-9]+)?-" dash
+          show "Forge (all MC)"       https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml "^1\.[0-9]+(\.[0-9]+)?-[0-9]" dash
           show "NeoForge"             https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml "^[0-9]"
           show "Architectury forge"   https://maven.architectury.dev/dev/architectury/architectury-forge/maven-metadata.xml "^[0-9]"
           show "Architectury neoforge" https://maven.architectury.dev/dev/architectury/architectury-neoforge/maven-metadata.xml "^[0-9]"
