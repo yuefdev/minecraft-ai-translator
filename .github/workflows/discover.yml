@@ -190,3 +190,17 @@ jobs:
           PY
             echo
           done
+      - name: Dependencies of FTB Quests / Library for 26.1.2 and the jar's neoforge.mods.toml
+        run: |
+          F=https://maven.ftb.dev/releases/dev/ftb/mods
+          for a in ftb-quests-neoforge:26.1.2.9 ftb-library-neoforge:26.1.2.9 ftb-teams-neoforge:26.1.2.4; do
+            n=${a%%:*}; v=${a##*:}
+            echo "=== $n $v (pom dependencies)"
+            curl -fsSL --max-time 30 $F/$n/$v/$n-$v.pom -o p.pom && grep -E "<(groupId|artifactId|version|scope)>" p.pom | tr -d ' \t' | paste -sd' ' | sed 's/<\/dependency>/\n/g' | head -n 12 | cut -c1-200
+            curl -fsSL --max-time 60 $F/$n/$v/$n-$v.jar -o j.jar && unzip -p j.jar META-INF/neoforge.mods.toml | grep -E "modId|versionRange|type|^version|loaderVersion" | head -n 24
+          done
+          echo "=== Patchouli on other mavens for 26.x"
+          curl -s -o /dev/null -w "%{http_code} modrinth patchouli 26.1.2\n" "https://api.modrinth.com/v2/project/patchouli/version?game_versions=%5B%2226.1.2%22%5D"
+          curl -fsSL --max-time 30 -G "https://api.modrinth.com/v2/project/patchouli/version" --data-urlencode 'game_versions=["26.1.2"]' | python3 -c "import json,sys; v=json.load(sys.stdin); print(len(v), [x['version_number'] for x in v][:3])"
+          echo "=== NeoForge 26.1.2.x versions"
+          curl -fsSL --max-time 30 https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml | grep -oE "<version>26\.1\.2[^<]*</version>" | sed -E 's/<[^>]+>//g' | sort -V | tail -n 3
