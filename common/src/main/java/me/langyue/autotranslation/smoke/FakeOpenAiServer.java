@@ -27,7 +27,7 @@ final class FakeOpenAiServer implements AutoCloseable {
     volatile String lastAuthorization = "";
 
     FakeOpenAiServer() throws IOException {
-        socket = new ServerSocket(0, 20, InetAddress.getLoopbackAddress());
+        socket = new ServerSocket(0, 20, InetAddress.getByAddress(new byte[]{127, 0, 0, 1}));
         thread = new Thread(this::serve, "AutoTranslation-SmokeServer");
         thread.setDaemon(true);
         thread.start();

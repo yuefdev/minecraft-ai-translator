@@ -1,5 +1,7 @@
 name: Forge 1.20.1 build
 
+# Builds the 1.20.1 Forge jar with the project's own Gradle wrapper (./gradlew :forge:build, the Linux twin of
+# gradlew.bat :forge:build) and runs the engine's unit tests. Shell steps only, so the end of the log is the summary.
 on:
   push:
     branches:
@@ -12,7 +14,6 @@ on:
       - '**.md'
   workflow_dispatch:
 
-# A newer push to the same branch supersedes a run that is still going.
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
@@ -24,41 +25,27 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+      - name: Check out
+        run: git clone --quiet --depth 1 --branch "$GITHUB_REF_NAME" "https://x-access-token:${{ github.token }}@github.com/$GITHUB_REPOSITORY.git" .
+      - name: Select Java 17
+        run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"; echo "$JAVA_HOME_17_X64/bin" >> "$GITHUB_PATH"
 
       # The translation engine has no Minecraft dependency, so it is tested as its own build.
       - name: Core unit tests
+        continue-on-error: true
         run: |
           chmod +x gradlew
-          set +e
           ./gradlew -p core test --no-daemon --console=plain > core-test.log 2>&1
-          code=$?
-          echo "=== core tests (exit $code) ==="
-          grep -cE " PASSED$" core-test.log | sed 's/^/passed: /'
-          grep -E " (FAILED|SKIPPED)$" core-test.log | head -n 40
-          grep -E -A12 "What went wrong" core-test.log | head -n 40
-          exit $code
+          echo "exit=$?" > core-test.status
 
       - name: Build Forge jar
+        continue-on-error: true
         run: |
-          set +e
           ./gradlew :forge:build --no-daemon --console=plain > forge-build.log 2>&1
-          code=$?
-          echo "=== forge build (exit $code) ==="
-          grep -E -A14 "What went wrong" forge-build.log | head -n 50
-          grep -E -B1 -A3 "error:" forge-build.log | head -n 80
-          grep -E "BUILD (SUCCESSFUL|FAILED)" forge-build.log
-          exit $code
+          echo "exit=$?" > forge-build.status
 
       - name: Inspect the built jar
-        if: always()
+        continue-on-error: true
         run: |
           shopt -s nullglob
           for jar in forge/build/libs/*.jar; do
@@ -71,13 +58,14 @@ jobs:
             echo "starter glossary            : $(unzip -l "$jar" | grep -c 'autotranslation/glossary-tr.json')"
             echo "mixin configs / refmaps     :"; unzip -l "$jar" | grep -E "mixins.json|refmap" | awk '{print "   " $4}'
             unzip -p "$jar" META-INF/mods.toml | grep -E '^(version|modId|displayName|license) ' | head -n 4
-          done
+          done > jar-inspection.txt 2>&1
 
       - name: Scan the repository for credential-like strings
+        continue-on-error: true
         run: |
-          # only counts are printed, never the matches; test fixtures and the smoke test use obviously fake keys
-          n=$(git grep -IlE "sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}" -- . ':!core/src/test' ':!common/src/main/java/me/langyue/autotranslation/smoke' | wc -l)
-          echo "files with credential-like strings outside test fixtures: $n"
+          # only counts are printed, never the matches; test fixtures and the start-up checks use obviously fake keys
+          n=$(git grep -IlE "sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}" -- . ':!core/src/test' ':(exclude,glob)**/SmokeTest.java' ':!common/src/main/java/me/langyue/autotranslation/smoke' | wc -l)
+          echo "files with credential-like strings outside test fixtures: $n" > scan.txt
           test "$n" -eq 0
 
       - uses: actions/upload-artifact@v4
@@ -92,4 +80,18 @@ jobs:
           path: |
             core-test.log
             forge-build.log
+            jar-inspection.txt
             core/build/reports
+
+      - name: Result summary
+        run: |
+          echo "##### 1.20.1 BUILD SUMMARY"
+          echo "core tests : $(cat core-test.status 2>/dev/null) | passed lines: $(grep -cE ' PASSED$' core-test.log 2>/dev/null) | failed lines: $(grep -cE ' FAILED$' core-test.log 2>/dev/null)"
+          echo "forge build: $(cat forge-build.status 2>/dev/null)"
+          cat jar-inspection.txt 2>/dev/null | head -n 20
+          cat scan.txt 2>/dev/null
+          ok=1
+          grep -q "exit=0" core-test.status || { ok=0; grep -E -A12 "What went wrong" core-test.log | head -n 30; grep -E " FAILED$" core-test.log | head -n 20; }
+          grep -q "exit=0" forge-build.status || { ok=0; grep -E -A14 "What went wrong" forge-build.log | head -n 30; grep -E -B1 -A3 "error:" forge-build.log | head -n 40; }
+          grep -qE ": 0$" scan.txt || { ok=0; echo "credential scan found files"; }
+          [ "$ok" = 1 ] && echo "1.20.1 BUILD PASSED" || { echo "1.20.1 BUILD FAILED"; exit 1; }
