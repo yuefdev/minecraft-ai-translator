@@ -64,11 +64,18 @@ public final class SmokeTest {
         ticks++;
         try {
             if (!started) {
-                if (minecraft.screen instanceof TitleScreen && minecraft.getOverlay() == null && ticks > 60) {
+                // a fresh game directory first shows the accessibility onboarding screen; skip it
+                if (minecraft.screen instanceof net.minecraft.client.gui.screens.AccessibilityOnboardingScreen) {
+                    minecraft.options.onboardAccessibility = false;
+                    minecraft.setScreen(new TitleScreen());
+                    return;
+                }
+                boolean overlayDone = minecraft.getOverlay() == null;
+                if (overlayDone && ticks > 60 && (minecraft.screen instanceof TitleScreen || ticks > 1200)) {
                     started = true;
                     begin(minecraft);
                 } else if (ticks > 6000) {
-                    check("reached title screen", false, "timeout waiting for the title screen");
+                    check("reached title screen", false, "timeout; screen=" + minecraft.screen + " overlay=" + minecraft.getOverlay());
                     finish(minecraft);
                 }
                 return;
@@ -94,7 +101,7 @@ public final class SmokeTest {
     // ------------------------------------------------------------------------------------------------ steps
 
     private static void begin(Minecraft minecraft) throws Exception {
-        check("reached title screen", true, "");
+        check("reached title screen", minecraft.screen instanceof TitleScreen, "screen=" + minecraft.screen);
         TranslationRuntime.service();
         check("translation runtime started", TranslationRuntime.service() != null, "");
 
