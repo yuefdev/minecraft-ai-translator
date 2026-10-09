@@ -40,8 +40,12 @@ jobs:
           extra=""
           if [ "${{ matrix.variant }}" = "with-ftbquests-patchouli" ]; then extra="-PsmokeMods=true"; fi
           set +e
-          timeout 2400 xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew :forge:runSmokeClient $extra --no-daemon --console=plain > smoke.log 2>&1
+          # print a short progress line regularly so a slow or stuck start-up can be diagnosed while it runs
+          ( while sleep 60; do echo "--- progress $(date +%T): $(wc -l < smoke.log) log lines ---"; tail -n 2 smoke.log | cut -c1-220; ls forge/build/smoke-run/logs/latest.log > /dev/null 2>&1 && grep -E "smoke|Smoke|AutoTranslation|Mixin|ERROR" forge/build/smoke-run/logs/latest.log | tail -n 3 | cut -c1-220; done ) &
+          ticker=$!
+          timeout 1800 xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew :forge:runSmokeClient $extra --no-daemon --console=plain > smoke.log 2>&1
           code=$?
+          kill $ticker 2>/dev/null
           echo "=== gradle exit code: $code ==="
           if [ -f forge/build/smoke/result.json ]; then
             python3 - <<'PY'
