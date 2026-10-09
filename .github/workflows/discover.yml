@@ -1,0 +1,42 @@
+name: Discover dependency versions
+
+# Prints the published versions of the dependencies each Minecraft version needs, so that build files use real
+# coordinates instead of guesses. Needs outbound network access, which GitHub-hosted runners have.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'claude/discover/**'
+      - 'claude/happy-rubin-fw6rqk'
+    paths:
+      - '.github/workflows/discover.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch maven metadata
+        run: |
+          show() { # name url grep-pattern
+            echo "=== $1"
+            curl -fsSL --max-time 60 "$2" -o meta.xml || { echo "(could not fetch $2)"; return; }
+            grep -oE "<version>[^<]+</version>" meta.xml | sed -E 's/<[^>]+>//g' | grep -E "$3" | tail -n 12 | tr '\n' ' '
+            echo
+          }
+          show "FTB Quests forge"            https://maven.ftb.dev/releases/dev/ftb/mods/ftb-quests-forge/maven-metadata.xml "^(1605|1802|1902|2001)\."
+          show "FTB Quests neoforge"         https://maven.ftb.dev/releases/dev/ftb/mods/ftb-quests-neoforge/maven-metadata.xml "^(2101|2110)\."
+          show "FTB Library forge"           https://maven.ftb.dev/releases/dev/ftb/mods/ftb-library-forge/maven-metadata.xml "^(1605|1802|1902|2001)\."
+          show "FTB Library neoforge"        https://maven.ftb.dev/releases/dev/ftb/mods/ftb-library-neoforge/maven-metadata.xml "^(2101|2110)\."
+          show "FTB Teams forge"             https://maven.ftb.dev/releases/dev/ftb/mods/ftb-teams-forge/maven-metadata.xml "^(1605|1802|1902|2001)\."
+          show "FTB Teams neoforge"          https://maven.ftb.dev/releases/dev/ftb/mods/ftb-teams-neoforge/maven-metadata.xml "^(2101|2110)\."
+          show "Patchouli"                   https://maven.blamejared.com/vazkii/patchouli/Patchouli/maven-metadata.xml "FORGE|NEOFORGE|^1\.(16|18|19|21)"
+          show "Forge 1.12.2/1.16.5/1.18.2/1.19.2" https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml "^(1\.12\.2|1\.16\.5|1\.18\.2|1\.19\.2)-"
+          show "NeoForge 21.1.x"             https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml "^21\.1\."
+          show "Architectury API forge"      https://maven.architectury.dev/dev/architectury/architectury-forge/maven-metadata.xml "^(1\.|4\.|6\.|9\.|13\.)"
+          show "Cloth Config forge"          https://maven.shedaniel.me/me/shedaniel/cloth/cloth-config-forge/maven-metadata.xml "^(4\.|6\.|8\.|11\.)"
+          show "Cloth Config neoforge"       https://maven.shedaniel.me/me/shedaniel/cloth/cloth-config-neoforge/maven-metadata.xml "^15\."
+          show "MixinBooter (1.12.2)"        https://maven.cleanroommc.com/zone/rong/mixinbooter/maven-metadata.xml "^[0-9]"
+          show "RetroFuturaGradle plugin"    https://plugins.gradle.org/m2/com/gtnewhorizons/retrofuturagradle/com.gtnewhorizons.retrofuturagradle.gradle.plugin/maven-metadata.xml "^1\."
