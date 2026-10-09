@@ -46,6 +46,29 @@ jobs:
           grep -E "BUILD (SUCCESSFUL|FAILED)" forge-build.log
           exit $code
 
+      - name: Inspect the built jar
+        if: always()
+        run: |
+          shopt -s nullglob
+          for jar in forge/build/libs/*.jar; do
+            echo "== $jar ($(stat -c %s "$jar") bytes)"
+            sha256sum "$jar"
+            case "$jar" in *-dev*|*-sources*|*-shadow*) continue;; esac
+            echo "core engine classes bundled : $(unzip -l "$jar" | grep -c 'me/langyue/autotranslation/core/.*\.class')"
+            echo "mod classes (tr/gui/mixin)  : $(unzip -l "$jar" | grep -cE 'autotranslation/(tr|gui|mixin)/.*\.class')"
+            echo "Turkish language file       : $(unzip -l "$jar" | grep -c 'assets/autotranslation/lang/tr_tr.json')"
+            echo "starter glossary            : $(unzip -l "$jar" | grep -c 'autotranslation/glossary-tr.json')"
+            echo "mixin configs / refmaps     :"; unzip -l "$jar" | grep -E "mixins.json|refmap" | awk '{print "   " $4}'
+            unzip -p "$jar" META-INF/mods.toml | grep -E '^(version|modId|displayName|license) ' | head -n 4
+          done
+
+      - name: Scan the repository for credential-like strings
+        run: |
+          # only counts are printed, never the matches; test fixtures and the smoke test use obviously fake keys
+          n=$(git grep -IlE "sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}" -- . ':!core/src/test' ':!common/src/main/java/me/langyue/autotranslation/smoke' | wc -l)
+          echo "files with credential-like strings outside test fixtures: $n"
+          test "$n" -eq 0
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
