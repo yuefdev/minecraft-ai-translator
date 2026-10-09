@@ -258,3 +258,32 @@ jobs:
           for m in $(find ~/.gradle versions/forge-1.16.5/.gradle -name "*.tiny" 2>/dev/null | head -n 20); do
             grep -nE "^c\s.*com/mojang/math/Transformation\s|^CLASS.*com/mojang/math/Transformation$" "$m" | head -n 2 | sed "s|^|$(basename $m): |"
           done
+
+  # FTB Quests on 1.16.5 / 1.18.2 / 1.19.2 refused to load in the start-up check ("Missing or unsupported mandatory
+  # dependencies"). Print what each jar declares, and which Item Filters builds exist.
+  ftb-legacy-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Declared dependencies
+        run: |
+          get() { for base in https://maven.ftb.dev/releases https://maven.saps.dev/releases https://maven.architectury.dev; do
+                    curl -fsSL --max-time 60 "$base/$1" -o "$2" 2>/dev/null && return 0; done; return 1; }
+          for a in ftb-quests-forge:1605.3.7-build.199 ftb-library-forge:1605.3.5-build.724 ftb-teams-forge:1605.3.0-build.157 \
+                   ftb-quests-forge:1802.3.16-build.479 ftb-library-forge:1802.3.12-build.726 ftb-teams-forge:1802.2.11-build.152 \
+                   ftb-quests-forge:1902.5.10-build.497 ftb-library-forge:1902.4.2-build.701 ftb-teams-forge:1902.2.14-build.165; do
+            n=${a%%:*}; v=${a##*:}
+            echo "=== $n $v"
+            if get "dev/ftb/mods/$n/$v/$n-$v.jar" j.jar; then
+              unzip -p j.jar META-INF/mods.toml | tr -d '\r' | awk '/\[\[dependencies/{d=1} d && /modId|mandatory|versionRange|type/{printf "%s ", $0} /side/{if(d) print ""}' | sed 's/  */ /g' | head -n 12
+            else echo "(jar not found)"; fi
+          done
+      - name: Item Filters and Architectury builds
+        run: |
+          for g in https://maven.ftb.dev/releases https://maven.saps.dev/releases; do
+            for a in dev/latvian/mods/item-filters-forge dev/ftb/mods/item-filters-forge; do
+              curl -fsSL --max-time 30 "$g/$a/maven-metadata.xml" -o m.xml 2>/dev/null || continue
+              echo "=== $g/$a"; grep -oE "<version>(1605|1802|1902)[^<]*</version>" m.xml | sed -E 's/<[^>]+>//g' | sort -V | awk -F. '{k=$1; last[k]=$0} END {for (k in last) print "  " k ": " last[k]}'
+            done
+          done
+          curl -fsSL --max-time 30 https://maven.architectury.dev/me/shedaniel/architectury-forge/maven-metadata.xml | grep -oE "<version>1\.[0-9]+\.[0-9]+</version>" | sed -E 's/<[^>]+>//g' | sort -V | tail -n 3 | sed 's/^/  architectury-forge (1.16): /'
+          curl -fsSL --max-time 30 https://maven.architectury.dev/dev/architectury/architectury-forge/maven-metadata.xml | grep -oE "<version>(4|6)\.[0-9]+\.[0-9]+</version>" | sed -E 's/<[^>]+>//g' | sort -V | awk -F. '{last[$1]=$0} END {for (k in last) print "  architectury-forge " k ".x latest: " last[k]}'
