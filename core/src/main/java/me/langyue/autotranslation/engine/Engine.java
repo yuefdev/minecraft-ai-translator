@@ -329,6 +329,7 @@ public final class Engine {
         final String url = settings.sharedPackUrl;
         if (!settings.sharedPacks || url == null || url.trim().isEmpty()) return;
         packSyncing = true;
+        service.holdForSharedPack(20_000L); // texts shown meanwhile wait a few seconds instead of costing requests
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -339,12 +340,13 @@ public final class Engine {
                     if (pack != null && pack.size() > 0 && language.equals(packLanguage)) {
                         service.setSharedPack(pack);
                         CoreLog.info("Shared pack " + language + ": " + pack.size() + " ready-made translations");
-                        invalidateDisplays();
                     }
                 } catch (RuntimeException e) {
                     CoreLog.warn("Shared pack could not be used", e);
                 } finally {
+                    service.releaseSharedPack();
                     packSyncing = false;
+                    invalidateDisplays(); // the texts that waited are looked up again
                 }
             }
         }, "AutoTranslation-Pack");

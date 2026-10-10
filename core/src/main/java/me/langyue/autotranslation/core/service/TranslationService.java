@@ -372,10 +372,25 @@ public final class TranslationService implements AutoCloseable {
     /** Translations from a shared pack, looked at after the cache and before a provider is asked. May be null. */
     private volatile PackLookup sharedPack;
 
+    /** While the clock is before this, texts the cache cannot answer wait instead of going to a provider. */
+    private volatile long packHoldUntil;
+
     /** Sets (or with null removes) the shared pack. Texts that were waiting for a provider are looked up again. */
     public void setSharedPack(PackLookup pack) {
         this.sharedPack = pack;
         readyMemo.clear();
+    }
+
+    /**
+     * A shared pack is being fetched: for at most this long, plain texts are not sent to a provider, because the pack
+     * is likely to have them. {@link #releaseSharedPack()} ends the wait earlier.
+     */
+    public void holdForSharedPack(long millis) {
+        packHoldUntil = clock.getAsLong() + millis;
+    }
+
+    public void releaseSharedPack() {
+        packHoldUntil = 0L;
     }
 
     /** A job is "short" when all of its unresolved text fits in this many characters. */
@@ -630,6 +645,9 @@ public final class TranslationService implements AutoCloseable {
             Result ready = new Result(State.READY, Compat.listOf(results), degraded, detail);
             if (!degraded) remember(memoKeyText, ready);
             return ready;
+        }
+        if (request.profile() == MaskProfile.PLAIN && clock.getAsLong() < packHoldUntil) {
+            return new Result(State.PENDING, fillOriginal(results), false, "waiting for the shared pack");
         }
         if (provider == null || !provider.isConfigured()) {
             return new Result(State.FAILED, fillOriginal(results), false, "provider not configured");
