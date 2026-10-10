@@ -21,6 +21,18 @@ public class EngineSettings {
     public boolean pretranslateLanguageFiles = true;
 
     /**
+     * Use the shared translation pack: ready-made translations of mods' language files that are downloaded (static
+     * files, nothing is uploaded) and used before a translation service is asked. Needs {@link #sharedPackUrl}.
+     */
+    public boolean sharedPacks = true;
+
+    /** Address of the pack site, for example {@code https://packs.example.com} (https). Empty: no shared pack. */
+    public String sharedPackUrl = DEFAULT_PACK_URL;
+
+    /** The pack site of this release; set once the site exists. */
+    public static final String DEFAULT_PACK_URL = "";
+
+    /**
      * Translation service: "auto" (default: the key decides - Gemini "AIza...", Groq "gsk_...", OpenRouter
      * "sk-or-..."; without a key the free, keyless Google machine translation), "google-free", "gemini", "groq",
      * "openrouter", "ollama", or "custom" (the endpoint and model below, e.g. OpenAI).

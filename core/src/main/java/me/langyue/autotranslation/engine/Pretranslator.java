@@ -71,6 +71,7 @@ final class Pretranslator implements Runnable {
                     pause(IDLE_MILLIS);
                     continue;
                 }
+                awaitSharedPack();
                 List<Map.Entry<String, String>> entries;
                 try {
                     entries = new ArrayList<Map.Entry<String, String>>(source.untranslated(language).entrySet());
@@ -89,6 +90,12 @@ final class Pretranslator implements Runnable {
         } catch (RuntimeException e) {
             CoreLog.warn("Pre-translation stopped by an unexpected error", e);
         }
+    }
+
+    /** Ready-made translations from the shared pack are free, so they are looked at before the first request is made. */
+    private void awaitSharedPack() throws InterruptedException {
+        long deadline = System.currentTimeMillis() + 120_000L;
+        while (!stopped && engine.sharedPackPending() && System.currentTimeMillis() < deadline) pause(300L);
     }
 
     private boolean wanted() {

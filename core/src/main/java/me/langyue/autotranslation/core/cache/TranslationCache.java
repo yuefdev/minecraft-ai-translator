@@ -32,10 +32,17 @@ public final class TranslationCache {
     private static final class Entry {
         private final StoredTranslation value;
         private final long timestamp;
+        /** Source hash, language and scope of the key: kept so that a shared pack can be built from the file later. Null in old files. */
+        private final String source;
+        private final String language;
+        private final String scope;
 
-        public Entry(StoredTranslation value, long timestamp) {
+        public Entry(StoredTranslation value, long timestamp, String source, String language, String scope) {
             this.value = value;
             this.timestamp = timestamp;
+            this.source = source;
+            this.language = language;
+            this.scope = scope;
         }
 
         public StoredTranslation value() {
@@ -92,7 +99,8 @@ public final class TranslationCache {
                     try {
                         JsonObject o = GSON.fromJson(line, JsonObject.class);
                         entries.put(o.get("k").getAsString(),
-                                new Entry(readValue(o.getAsJsonObject("v")), o.get("ts").getAsLong()));
+                                new Entry(readValue(o.getAsJsonObject("v")), o.get("ts").getAsLong(),
+                                        text(o, "s"), text(o, "l"), text(o, "c")));
                     } catch (RuntimeException e) {
                         skippedCorruptLines++;
                     }
@@ -129,7 +137,7 @@ public final class TranslationCache {
     public void put(CacheKey key, StoredTranslation value) {
         long now = System.currentTimeMillis();
         String fingerprint = key.fingerprint();
-        entries.put(fingerprint, new Entry(value, now));
+        entries.put(fingerprint, new Entry(value, now, key.sourceHash(), key.targetLanguage(), key.contentId()));
         JsonObject o = new JsonObject();
         o.addProperty("k", fingerprint);
         o.addProperty("s", key.sourceHash());
@@ -172,12 +180,15 @@ public final class TranslationCache {
             }
             sorted = new ArrayList<>(sorted.subList(0, maxEntries));
         }
-        // Key fields beyond the fingerprint are only informative; a compacted line keeps what the loader needs.
+        // A compacted line keeps what the loader needs, and the source hash, language and scope that a pack is built from.
         StringBuilder out = new StringBuilder();
         for (int i = sorted.size() - 1; i >= 0; i--) {
             Map.Entry<String, Entry> e = sorted.get(i);
             JsonObject o = new JsonObject();
             o.addProperty("k", e.getKey());
+            if (e.getValue().source != null) o.addProperty("s", e.getValue().source);
+            if (e.getValue().language != null) o.addProperty("l", e.getValue().language);
+            if (e.getValue().scope != null) o.addProperty("c", e.getValue().scope);
             o.add("v", writeValue(e.getValue().value()));
             o.addProperty("ts", e.getValue().timestamp());
             out.append(GSON.toJson(o)).append('\n');
@@ -188,6 +199,10 @@ public final class TranslationCache {
         } catch (IOException e) {
             CoreLog.warn("Could not compact translation cache " + file, e);
         }
+    }
+
+    private static String text(JsonObject o, String name) {
+        return o.has(name) && !o.get(name).isJsonNull() ? o.get(name).getAsString() : null;
     }
 
     private static JsonObject writeValue(StoredTranslation value) {

@@ -10,6 +10,7 @@
 - Türkçe/İngilizce algılama artık yalnızca özel karakterlere bakmaz.
 - 1.12.2: tüm modların dil dosyaları arka planda toplu çevrilir (`pretranslateLanguageFiles`); çoğu metin ilk görüldüğünde zaten Türkçe olur. Kuyruk kısa tutulur, ekrandaki metin uzun beklemez.
 - 1.12.2: uzun metinlerin satırları (araç ipuçları) artık tek tek çeviriye gönderilmez; metin bütün olarak çevrilir.
+- Ortak çeviri paketi (`sharedPacks`, `sharedPackUrl`): bir oyuncunun çevirdiği mod metinleri statik dosyalar olarak paylaşılabilir; oyun sağlayıcıya sormadan önce paketi kullanır. Yalnızca indirir, hiçbir şey göndermez; parçalar SHA-256 ile, çeviriler orijinalle karşılaştırılarak doğrulanır. Bkz. `docs/ORTAK_PAKET.md`.
 
 # V1.2.1
 

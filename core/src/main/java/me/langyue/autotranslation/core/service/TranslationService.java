@@ -13,6 +13,8 @@ import me.langyue.autotranslation.core.mask.MaskProfile;
 import me.langyue.autotranslation.core.mask.MaskedText;
 import me.langyue.autotranslation.core.mask.Masker;
 import me.langyue.autotranslation.core.mask.RestoreResult;
+import me.langyue.autotranslation.core.pack.PackLookup;
+import me.langyue.autotranslation.core.pack.PackValidator;
 import me.langyue.autotranslation.core.provider.PromptBuilder;
 import me.langyue.autotranslation.core.provider.ProviderException;
 import me.langyue.autotranslation.core.provider.ProviderRequest;
@@ -367,6 +369,14 @@ public final class TranslationService implements AutoCloseable {
     private final Masker masker = new Masker();
     private final RateLimiter rateLimiter;
     private final boolean coalesce;
+    /** Translations from a shared pack, looked at after the cache and before a provider is asked. May be null. */
+    private volatile PackLookup sharedPack;
+
+    /** Sets (or with null removes) the shared pack. Texts that were waiting for a provider are looked up again. */
+    public void setSharedPack(PackLookup pack) {
+        this.sharedPack = pack;
+        readyMemo.clear();
+    }
 
     /** A job is "short" when all of its unresolved text fits in this many characters. */
     private static final int SHORT_JOB_CHARS = 400;
@@ -599,6 +609,13 @@ public final class TranslationService implements AutoCloseable {
                 results[i] = new SegmentResult(Origin.CACHE, cached);
                 continue;
             }
+            StoredTranslation packed = request.profile() == MaskProfile.PLAIN && !segment.isRuns() ? fromSharedPack(keys[i], p) : null;
+            if (packed != null) {
+                cache.put(keys[i], packed);
+                cacheHits.incrementAndGet();
+                results[i] = new SegmentResult(Origin.CACHE, packed);
+                continue;
+            }
             Long failedUntil = failures.get(keys[i].fingerprint());
             if (failedUntil != null && failedUntil > now) {
                 results[i] = SegmentResult.ORIGINAL;
@@ -657,6 +674,15 @@ public final class TranslationService implements AutoCloseable {
 
     private static String sourceKey(Segment s) {
         return s.isRuns() ? "R" + String.join("\u0002", s.runs()) : "T" + s.text();
+    }
+
+    /** The pack's translation for this text if there is one that keeps everything the original contains. */
+    private StoredTranslation fromSharedPack(CacheKey key, Prepared prepared) {
+        PackLookup pack = sharedPack;
+        if (pack == null) return null;
+        String text = pack.find(key.targetLanguage(), key.sourceHash());
+        if (text == null || !PackValidator.acceptable(prepared.masked(), text)) return null;
+        return StoredTranslation.plain(text);
     }
 
     private Prepared prepare(Segment segment, MaskProfile profile, LanguageProfile target) {

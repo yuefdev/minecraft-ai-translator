@@ -80,6 +80,9 @@ public final class Engine {
     private volatile Secret apiKey = Secret.empty();
     private volatile GameLanguageIndex gameIndex = GameLanguageIndex.empty();
     private volatile Pretranslator pretranslator;
+    /** The language a shared pack was last asked for, and whether that is still being fetched. */
+    private volatile String packLanguage;
+    private volatile boolean packSyncing;
     private volatile boolean refreshRequested = false;
     private long lastRefreshMillis = 0L;
     private String lastLanguage;
@@ -299,6 +302,7 @@ public final class Engine {
             lastLanguage = language;
             if (changed) applyConfig(); // new target language: lookups are keyed by it, displays must be rebuilt
         }
+        if (language != null) syncSharedPack(language.toLowerCase(Locale.ROOT));
         if (!refreshRequested) return;
         long now = System.currentTimeMillis();
         if (now - lastRefreshMillis < 400) return;
@@ -311,6 +315,42 @@ public final class Engine {
                 CoreLog.warn("Screen refresh failed: " + t);
             }
         }
+    }
+
+    /** Whether the shared pack of the current language is still being fetched (the pre-translation waits for it). */
+    boolean sharedPackPending() {
+        return packSyncing;
+    }
+
+    /** Once per language: fetches the shared pack in the background and hands it to the service. */
+    private void syncSharedPack(final String language) {
+        if (language.equals(packLanguage) || language.equals("en_us")) return;
+        packLanguage = language;
+        final String url = settings.sharedPackUrl;
+        if (!settings.sharedPacks || url == null || url.trim().isEmpty()) return;
+        packSyncing = true;
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    int timeout = Math.max(5, Math.min(300, settings.timeoutSeconds)) * 1000;
+                    me.langyue.autotranslation.core.pack.SharedPack pack = me.langyue.autotranslation.core.pack.PackDownloader
+                            .sync(url, language, platform.dataDir().resolve("packs"), timeout);
+                    if (pack != null && pack.size() > 0 && language.equals(packLanguage)) {
+                        service.setSharedPack(pack);
+                        CoreLog.info("Shared pack " + language + ": " + pack.size() + " ready-made translations");
+                        invalidateDisplays();
+                    }
+                } catch (RuntimeException e) {
+                    CoreLog.warn("Shared pack could not be used", e);
+                } finally {
+                    packSyncing = false;
+                }
+            }
+        }, "AutoTranslation-Pack");
+        thread.setDaemon(true);
+        thread.setPriority(Thread.MIN_PRIORITY);
+        thread.start();
     }
 
     // ------------------------------------------------------------------------------------ configuration
@@ -570,6 +610,8 @@ public final class Engine {
      */
     public synchronized void startPretranslation(LanguageSource source) {
         if (pretranslator != null || source == null) return;
+        String language = platform.languageCode();
+        if (language != null) syncSharedPack(language.toLowerCase(Locale.ROOT)); // so that it is under way before the first text
         pretranslator = new Pretranslator(this, source);
         pretranslator.start();
     }

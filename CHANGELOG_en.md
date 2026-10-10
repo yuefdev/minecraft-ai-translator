@@ -9,6 +9,7 @@
 - Turkish settings screen; Turkish/English detection no longer relies on special characters alone.
 - 1.12.2: the language files of all mods are translated in the background (`pretranslateLanguageFiles`), so most texts are already Turkish the first time they are shown. The queue is kept short, so text on screen never waits long.
 - 1.12.2: the lines of a wrapped long text (tooltips) are no longer sent to the translator one by one; the text is translated as a whole.
+- Shared translation packs (`sharedPacks`, `sharedPackUrl`): the translations one player made of mod texts can be shared as static files; the game uses the pack before it asks a provider. Download only, nothing is sent; shards are checked against a SHA-256 and every translation against its original. See `docs/ORTAK_PAKET.md`.
 
 > The following is a machine translation. Welcome to correct grammatical errors.
 
