@@ -164,14 +164,17 @@ public class Transformer implements IClassTransformer {
                 "(Ljava/lang/String;I)Ljava/util/List;",         // listFormattedStringToWidth(text, width)
                 "(Ljava/lang/String;I)Ljava/lang/String;"        // wrapFormattedStringToWidth / trimStringToWidth
         };
+        // the methods that split a text into lines get the hook that remembers the text, so that its lines are not
+        // translated one by one
+        String[] hooks = {"fontText", "fontText", "fontWrapText", "fontWrapText"};
         int patched = 0;
         for (MethodNode m : node.methods) {
             if ((m.access & Opcodes.ACC_STATIC) != 0 || (m.access & Opcodes.ACC_ABSTRACT) != 0 || m.name.startsWith("<")) continue;
-            for (String desc : descriptors) {
-                if (m.desc.equals(desc)) {
+            for (int i = 0; i < descriptors.length; i++) {
+                if (m.desc.equals(descriptors[i])) {
                     InsnList code = new InsnList();
                     code.add(new VarInsnNode(Opcodes.ALOAD, 1));
-                    code.add(new MethodInsnNode(Opcodes.INVOKESTATIC, HOOKS, "fontText", STRING, false));
+                    code.add(new MethodInsnNode(Opcodes.INVOKESTATIC, HOOKS, hooks[i], STRING, false));
                     code.add(new VarInsnNode(Opcodes.ASTORE, 1));
                     m.instructions.insert(code);
                     patched++;

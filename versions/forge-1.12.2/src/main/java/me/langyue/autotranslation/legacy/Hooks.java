@@ -3,6 +3,7 @@ package me.langyue.autotranslation.legacy;
 import me.langyue.autotranslation.core.mask.MaskProfile;
 import me.langyue.autotranslation.core.service.Types.Content;
 import me.langyue.autotranslation.engine.Engine;
+import me.langyue.autotranslation.engine.LineFragments;
 import net.minecraft.client.resources.I18n;
 
 /**
@@ -112,12 +113,27 @@ public final class Hooks {
         }
     }
 
-    /** Hard-coded text that is about to be drawn, measured or wrapped (only while a suitable screen is open). */
+    /** Texts that were just split into lines: the lines that are drawn afterwards are not texts of their own. */
+    private static final LineFragments WRAPPED = new LineFragments(24);
+
+    /** Hard-coded text that is about to be drawn or measured (only while a suitable screen is open). */
     public static String fontText(String text) {
+        return font(text, false);
+    }
+
+    /** Hard-coded text that is about to be split into lines (wrapped or trimmed to a width). */
+    public static String fontWrapText(String text) {
+        return font(text, true);
+    }
+
+    private static String font(String text, boolean wrap) {
         try {
             Engine engine = Engine.get();
-            if (text == null || text.length() < 2 || engine == null || !engine.genericEnabled() || PRODUCED.contains(text)
-                    || !GenericGate.screenAllowed()) {
+            if (text == null || text.length() < 2 || engine == null || !engine.genericEnabled() || !GenericGate.screenAllowed()) {
+                return text;
+            }
+            if (PRODUCED.contains(text)) {
+                if (wrap) WRAPPED.remember(text);
                 return text;
             }
             long generation = engine.generation();
@@ -127,11 +143,19 @@ public final class Hooks {
             }
             String cached = FONT_CACHE.get(text);
             if (cached == null) {
+                // A line of a text that was just wrapped ("and bugs in multiblocks."): never sent on its own. Not
+                // remembered either, so the same words are looked at again once the wrapped text is gone.
+                if (WRAPPED.isFragment(text)) return text;
                 String translated = engine.translate(text, INTERFACE, MaskProfile.PLAIN);
                 cached = translated == null ? "" : produced(translated);
                 FONT_CACHE.put(text, cached);
             }
-            return cached.isEmpty() ? text : cached;
+            String shown = cached.isEmpty() ? text : cached;
+            if (wrap) {
+                WRAPPED.remember(text);
+                WRAPPED.remember(shown);
+            }
+            return shown;
         } catch (Throwable t) {
             if (lastProblem.isEmpty()) lastProblem = "fontText: " + t;
             return text;

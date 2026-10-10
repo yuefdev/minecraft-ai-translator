@@ -83,11 +83,19 @@ public class AutoTranslationMod {
         CoreLog.info("AutoTranslation (Turkish pipeline) started for Minecraft 1.12.2");
     }
 
+    private boolean pretranslationStarted;
+
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase == TickEvent.Phase.END) {
             Engine current = Engine.get();
-            if (current != null) current.tick();
+            if (current == null) return;
+            if (!pretranslationStarted) {
+                // the first tick: the game has finished loading, so the language files of all mods can be read
+                pretranslationStarted = true;
+                if (!Boolean.getBoolean("autotranslation.smoketest")) current.startPretranslation(new LanguageFiles());
+            }
+            current.tick();
         }
     }
 

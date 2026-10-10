@@ -7,6 +7,8 @@
 - Placeholders, colour codes, URLs, ids and Patchouli commands are masked before translation and verified afterwards; on failure the original text is shown.
 - Editable glossary, local corrections, persistent offline cache, bounded queue/rate limit/timeout/retries.
 - Turkish settings screen; Turkish/English detection no longer relies on special characters alone.
+- 1.12.2: the language files of all mods are translated in the background (`pretranslateLanguageFiles`), so most texts are already Turkish the first time they are shown. The queue is kept short, so text on screen never waits long.
+- 1.12.2: the lines of a wrapped long text (tooltips) are no longer sent to the translator one by one; the text is translated as a whole.
 
 > The following is a machine translation. Welcome to correct grammatical errors.
 

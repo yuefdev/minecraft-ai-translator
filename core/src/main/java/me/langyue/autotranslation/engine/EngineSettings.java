@@ -15,6 +15,12 @@ public class EngineSettings {
     public boolean bulkLanguageFiles = false;
 
     /**
+     * Translate the language files of all mods in the background (only versions that implement it; today 1.12.2),
+     * so that texts are Turkish the first time they are shown. Results go to the cache, so this costs requests once.
+     */
+    public boolean pretranslateLanguageFiles = true;
+
+    /**
      * Translation service: "auto" (default: the key decides - Gemini "AIza...", Groq "gsk_...", OpenRouter
      * "sk-or-..."; without a key the free, keyless Google machine translation), "google-free", "gemini", "groq",
      * "openrouter", "ollama", or "custom" (the endpoint and model below, e.g. OpenAI).

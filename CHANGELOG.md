@@ -8,6 +8,8 @@
 - Düzenlenebilir sözlük, yerel düzeltmeler, kalıcı çevrimdışı önbellek, kuyruk/hız sınırı/zaman aşımı/sınırlı yeniden deneme.
 - Türkçe ayarlar ekranı (Genel, Sağlayıcı, Sözlük, Düzeltmeler, Durum).
 - Türkçe/İngilizce algılama artık yalnızca özel karakterlere bakmaz.
+- 1.12.2: tüm modların dil dosyaları arka planda toplu çevrilir (`pretranslateLanguageFiles`); çoğu metin ilk görüldüğünde zaten Türkçe olur. Kuyruk kısa tutulur, ekrandaki metin uzun beklemez.
+- 1.12.2: uzun metinlerin satırları (araç ipuçları) artık tek tek çeviriye gönderilmez; metin bütün olarak çevrilir.
 
 # V1.2.1
 

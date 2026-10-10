@@ -79,6 +79,7 @@ public final class Engine {
     private volatile OpenAiSettings openAi = OpenAiSettings.defaults();
     private volatile Secret apiKey = Secret.empty();
     private volatile GameLanguageIndex gameIndex = GameLanguageIndex.empty();
+    private volatile Pretranslator pretranslator;
     private volatile boolean refreshRequested = false;
     private long lastRefreshMillis = 0L;
     private String lastLanguage;
@@ -563,7 +564,28 @@ public final class Engine {
         return genericEnabled() && service.needsTranslation(text, MaskProfile.PLAIN);
     }
 
+    /**
+     * Starts translating the language files of all mods in the background (see {@link Pretranslator}). Call once the
+     * game's resources are loaded; later calls do nothing.
+     */
+    public synchronized void startPretranslation(LanguageSource source) {
+        if (pretranslator != null || source == null) return;
+        pretranslator = new Pretranslator(this, source);
+        pretranslator.start();
+    }
+
+    /** Lets displays look their texts up again (new translations were cached) without rebuilding open screens. */
+    void invalidateDisplays() {
+        generation.incrementAndGet();
+    }
+
+    String languageCode() {
+        return platform.languageCode();
+    }
+
     public void shutdown() {
+        Pretranslator running = pretranslator;
+        if (running != null) running.stop();
         service.close();
         io.shutdown();
         if (instance == this) instance = null;

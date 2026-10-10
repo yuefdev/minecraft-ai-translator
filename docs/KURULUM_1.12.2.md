@@ -50,8 +50,13 @@ açılışta oluşur; bu alan dosyada yoksa elle ekleyin (ör. `"provider": "gem
 
 ## 5. Ne beklemeli
 
-* Bir metin **ilk görüldüğünde** birkaç saniye İngilizce kalır, sonra Türkçeye döner. Çeviriler
-  `AutoTranslation/cache/` içine kaydedilir; bir sonraki açılışta internet olmadan da Türkçe görünür.
+* **Toplu ön çeviri:** oyun açılınca mod, tüm modların Türkçesi olmayan dil dosyalarını (`en_us.lang`) arka planda
+  çevirmeye başlar; önce eşya/blok adları, sonra açıklamalar. 250 modluk bir paket için on binlerce metindir:
+  anahtarsız Google ile 30-40 dakika sürer. Oyun bu sırada normal oynanır; kuyruk kısa tutulur, ekranda görünen metin uzun beklemez.
+  Her metin bir kez çevrilir; sonraki açılışlarda bu iş istek göndermez. Log'da `Pre-translation` satırlarından
+  izlenir. Kapatmak için `settings.json` içinde `"pretranslateLanguageFiles": false`.
+* Ön çeviri bitmeden görülen bir metin **ilk görüldüğünde** birkaç saniye İngilizce kalabilir, sonra Türkçeye döner.
+  Çeviriler `AutoTranslation/cache/` içine kaydedilir; bir sonraki açılışta internet olmadan da Türkçe görünür.
 * Aynı anda istenen kısa metinler (eşya adları, düğmeler) **tek istekte** birlikte gönderilir. Ücretsiz katmanların
   dakikadaki istek sınırı bu yüzden çabuk dolmaz.
 * Ücretsiz Gemini'nin **günlük** bir sınırı vardır (yaklaşık birkaç yüz istek; kendi sınırınızı

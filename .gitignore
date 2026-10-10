@@ -118,7 +118,7 @@ run/
 !gradle-wrapper.jar
 
 # Local secrets and translator working data must never be committed
-AutoTranslation/
+/AutoTranslation/
 **/secrets/
 *.apikey
 core/build/
