@@ -30,7 +30,7 @@ public class EngineSettings {
     public String sharedPackUrl = DEFAULT_PACK_URL;
 
     /** The pack site of this release; set once the site exists. */
-    public static final String DEFAULT_PACK_URL = "";
+    public static final String DEFAULT_PACK_URL = "https://autotranslation-packs.ergyusuf34.workers.dev";
 
     /**
      * Translation service: "auto" (default: the key decides - Gemini "AIza...", Groq "gsk_...", OpenRouter

@@ -21,13 +21,16 @@ Bir oyuncunun çevirdiği mod metinleri, diğer oyuncuların da kullanabileceği
 
 ```json
 "sharedPacks": true,
-"sharedPackUrl": "https://paket-siteniz.pages.dev"
+"sharedPackUrl": "https://autotranslation-packs.ergyusuf34.workers.dev"
 ```
 
 Adres sürümle birlikte gelir (`EngineSettings.DEFAULT_PACK_URL`); elle yazmak yalnızca farklı bir site için gerekir.
 Dosyalar `AutoTranslation/packs/<dil>/` içinde saklanır, çevrimdışıyken de kullanılır.
 
 ## Paketi yayınlayan tarafı
+
+Site, alan adı gerektirmeyen bir Cloudflare Worker'dır (statik dosyalar): `https://autotranslation-packs.ergyusuf34.workers.dev`.
+Ayarı `wrangler.jsonc` içindedir; adres `EngineSettings.DEFAULT_PACK_URL` olarak jar'a yazılıdır.
 
 1. Çeviri yapılmış bir oyundan `AutoTranslation/cache/translations.jsonl` dosyasını al.
 2. Paketi üret (Gson gerekir; Minecraft'ın `libraries` klasöründeki `gson-*.jar` yeter):
@@ -38,10 +41,13 @@ Dosyalar `AutoTranslation/packs/<dil>/` içinde saklanır, çevrimdışıyken de
 
    Aynı klasörde yeniden çalıştırmak pakete ekler; farklı oyuncuların önbellekleri birleştirilebilir. Yalnızca dil dosyası ve
    arayüz metinleri girer; görev ve kitap metinleri girmez.
-3. `pack-site/` içeriğini depoya ekle (`pack-site/v1/tr_tr/manifest.json` ve `shard-*.jsonl.gz`).
-4. Cloudflare Pages: depoyu bağla, **build command** boş, **output directory** `pack-site`. Yayın adresi
-   `https://<proje>.pages.dev` olur.
-5. Bu adresi `EngineSettings.DEFAULT_PACK_URL` içine yaz ve yeni jar'ı derle.
+3. Yayınla (Cloudflare hesabına `wrangler login` ile girilmiş olmalı):
+
+   ```bash
+   npx wrangler deploy
+   ```
+
+4. `pack-site/v1/<dil>/` içindeki değişiklikleri depoya da ekle.
 
 Not: paket, modların metinlerinden türetilmiş çeviriler içerir. Bazı mod yazarları bunun yeniden dağıtılmasını
 istemeyebilir; yayınlamadan önce bunu göz önünde bulundur.
