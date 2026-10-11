@@ -26,10 +26,13 @@ public class EngineSettings {
      */
     public boolean sharedPacks = true;
 
-    /** Address of the pack site, for example {@code https://packs.example.com} (https). Empty: no shared pack. */
-    public String sharedPackUrl = DEFAULT_PACK_URL;
+    /**
+     * Address of the pack site (https). Null means "not set": {@link SettingsStore} then fills in
+     * {@link #DEFAULT_PACK_URL} when it reads the player's settings. Empty means no shared pack.
+     */
+    public String sharedPackUrl = null;
 
-    /** The pack site of this release; set once the site exists. */
+    /** The pack site of this release. */
     public static final String DEFAULT_PACK_URL = "https://autotranslation-packs.ergyusuf34.workers.dev";
 
     /**

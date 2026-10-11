@@ -13,6 +13,7 @@ import me.langyue.autotranslation.engine.Engine;
 import me.langyue.autotranslation.engine.EngineSettings;
 import me.langyue.autotranslation.engine.LanguageSource;
 import me.langyue.autotranslation.engine.Platform;
+import me.langyue.autotranslation.engine.SettingsStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -243,5 +244,17 @@ class SharedPackTest {
         assertFalse(PackValidator.acceptable(masker.mask("Iron Ingot", MaskProfile.PLAIN), "§kDemir Külçe"));
         assertFalse(PackValidator.acceptable(masker.mask("Iron Ingot", MaskProfile.PLAIN), "Demir\u0000Külçe"));
         assertFalse(PackValidator.acceptable(masker.mask("Iron Ingot", MaskProfile.PLAIN), ""));
+    }
+
+    @Test
+    void thePlayersSettingsGetTheDefaultAddressButNothingElseDoes() throws Exception {
+        assertNull(new EngineSettings().sharedPackUrl, "code that builds settings by hand (tests) never reaches the network");
+        Path file = dir.resolve("settings.json");
+        assertEquals(EngineSettings.DEFAULT_PACK_URL, new SettingsStore(file).load().sharedPackUrl, "no settings file yet");
+        Files.write(file, "{\"enabled\": true}".getBytes(StandardCharsets.UTF_8));
+        assertEquals(EngineSettings.DEFAULT_PACK_URL, new SettingsStore(file).load().sharedPackUrl, "an older settings file without the field");
+        Files.write(file, "{\"sharedPackUrl\": \"\"}".getBytes(StandardCharsets.UTF_8));
+        assertEquals("", new SettingsStore(file).load().sharedPackUrl, "an empty address switches the pack off");
+        assertTrue(EngineSettings.DEFAULT_PACK_URL.startsWith("https://"));
     }
 }

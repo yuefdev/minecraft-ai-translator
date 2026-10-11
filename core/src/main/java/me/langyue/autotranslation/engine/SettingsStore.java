@@ -25,6 +25,7 @@ public final class SettingsStore {
                 EngineSettings loaded = GSON.fromJson(Compat.readString(file), EngineSettings.class);
                 if (loaded != null) {
                     if (loaded.wordBlacklist == null) loaded.wordBlacklist = new java.util.ArrayList<String>();
+                    if (loaded.sharedPackUrl == null) loaded.sharedPackUrl = EngineSettings.DEFAULT_PACK_URL;
                     return loaded;
                 }
             } catch (IOException e) {
@@ -34,6 +35,7 @@ public final class SettingsStore {
             }
         }
         EngineSettings defaults = new EngineSettings();
+        defaults.sharedPackUrl = EngineSettings.DEFAULT_PACK_URL;
         save(defaults);
         return defaults;
     }
