@@ -31,7 +31,7 @@ logoFile = "icon.png" #optional
 # A text field displayed in the mod UI
 #credits="Thanks for this example mod goes to Java" #optional
 # A text field displayed in the mod UI
-authors = "墨涤千尘 (original AutoTranslation); OpenAI/Turkish pipeline, FTB Quests and Patchouli integration added in this fork" #optional
+authors = "yuefdev; based on AutoTranslation by 墨涤千尘" #optional
 # Display Test controls the display for your mod in the server connection screen
 # MATCH_VERSION means that your mod will cause a red X if the versions on client and server differ. This is the default behaviour and should be what you choose if you have server and client elements to your mod.
 # IGNORE_SERVER_VERSION means that your mod will not cause a red X if it's present on the server but not on the client. This is what you should use if you're a server only mod.
@@ -42,9 +42,10 @@ authors = "墨涤千尘 (original AutoTranslation); OpenAI/Turkish pipeline, FTB
 
 # The description text for the mod (multi line!) (#mandatory)
 description = '''
-Automatically translates English mod content into your language. This version adds an OpenAI compatible
-provider, a Turkish settings screen, and display-time translation of FTB Quests quests and Patchouli books.
-Licensed under the GNU Affero General Public License v3.0; original work by 墨涤千尘 (AutoTranslation).
+Translates the English text of your mods into Turkish while you play: item names, tooltips, menus, FTB Quests and
+Patchouli books. It works with no setup (keyless Google Translate) and better with a free Gemini key. Translation
+happens when text is drawn; nothing in quest or book data is changed. Licensed under the GNU Affero General Public
+License v3.0; based on AutoTranslation by 墨涤千尘.
 '''
 
 # A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.

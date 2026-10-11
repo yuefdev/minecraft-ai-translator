@@ -7,11 +7,12 @@ issueTrackerURL = "https://github.com/yuefdev/minecraft-ai-translator/issues/new
 modId = "autotranslation"
 version = "${version}"
 displayName = "AutoTranslation"
-authors = "墨涤千尘 (original AutoTranslation); OpenAI/Turkish pipeline, FTB Quests and Patchouli integration added in this fork"
+authors = "yuefdev; based on AutoTranslation by 墨涤千尘"
 description = '''
-Automatically translates English mod content into your language (Turkish first) through an OpenAI compatible
-provider: FTB Quests quest text and Patchouli books are translated at display time, nothing in the quest or book
-data is changed. Licensed under the GNU Affero General Public License v3.0; original work by 墨涤千尘 (AutoTranslation).
+Translates the English text of your mods into Turkish while you play: item names, tooltips, menus, FTB Quests and
+Patchouli books. It works with no setup (keyless Google Translate) and better with a free Gemini key. Translation
+happens when text is drawn; nothing in quest or book data is changed. Licensed under the GNU Affero General Public
+License v3.0; based on AutoTranslation by 墨涤千尘.
 '''
 
 [[dependencies.autotranslation]]
