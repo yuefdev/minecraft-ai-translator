@@ -2,10 +2,11 @@
 
 # AutoTranslation
 
-**Play any modpack in Turkish. No resource packs, no waiting for mod authors.**
+**Play any modpack in your own language. No resource packs, no waiting for mod authors.**
 
-AutoTranslation is a client-side Minecraft mod that translates the English text of your mods into natural Turkish
-while you play: item names, tooltips, menus, FTB Quests, Patchouli books and more.
+AutoTranslation is a client-side Minecraft mod that translates the English text of your mods into the language you
+picked in Minecraft while you play: item names, tooltips, menus, FTB Quests, Patchouli books and more. German,
+Spanish, Turkish, Japanese: any language your translation service supports.
 
 [![Licence: AGPL-3.0](https://img.shields.io/github/license/yuefdev/minecraft-ai-translator?color=blue)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/yuefdev/minecraft-ai-translator?style=flat)](https://github.com/yuefdev/minecraft-ai-translator/stargazers)
@@ -16,7 +17,7 @@ while you play: item names, tooltips, menus, FTB Quests, Patchouli books and mor
 
 <img src="docs/images/before-after.png" alt="Three item tooltips from the StoneBlock modpack, first in English without the mod, then in Turkish with it" width="840">
 
-<sub>Same items, same world, Minecraft 1.12.2 (StoneBlock). Left: mod removed. Right: mod installed.</sub>
+<sub>Same items, same world, Minecraft 1.12.2 (StoneBlock), game language Turkish. Left: mod removed. Right: mod installed.</sub>
 
 </div>
 
@@ -28,7 +29,8 @@ Most mods ship in English only, and translation pull requests can take months or
 have tens of thousands of strings. AutoTranslation translates them for you, in the background, and remembers the
 result.
 
-Real output from a StoneBlock run (about 38,000 texts), with keyless Google Translate and no manual edits:
+Real output from a StoneBlock run (about 38,000 texts) with the game language set to Turkish, the language the mod
+is tuned and tested for. Keyless Google Translate, no manual edits:
 
 | Mod | English | Turkish |
 |---|---|---|
@@ -52,21 +54,22 @@ that loses any of them is rejected.
 
 ## Features
 
-- **Works out of the box.** With no setup it uses keyless Google Translate. For better, context-aware Turkish, paste
-  a free [Gemini](https://aistudio.google.com/apikey) key. Groq, Mistral, OpenRouter, a local
+- **Works out of the box.** With no setup it uses keyless Google Translate. For better, context-aware translations,
+  paste a free [Gemini](https://aistudio.google.com/apikey) key. Groq, Mistral, OpenRouter, a local
   [Ollama](https://ollama.com) model and any OpenAI-compatible service work too. The mod detects the service from
   the key.
-- **Translates every mod, automatically.** Language files of mods that have no Turkish file, plus English text
-  hard-coded into their screens. No mod list to maintain.
+- **Translates every mod, automatically.** Language files of mods that have no file for your language, plus
+  English text hard-coded into their screens. No mod list to maintain.
 - **Quests and books.** FTB Quests (titles, subtitles, descriptions, tasks, rewards), Patchouli books, and
   BetterQuesting on 1.12.2.
 - **Does not touch your data.** Translation happens when text is drawn. Quest IDs, conditions, rewards, commands
   and progress stay as they are.
 - **Persistent offline cache.** Each text is translated once. After that it works without internet.
 - **Background pre-translation (1.12.2).** Translates the language files of all your mods at start-up, so most
-  text is already Turkish the first time you see it.
+  text is already translated the first time you see it.
 - **Shared translation packs.** Ready-made translations are downloaded (download only, nothing is uploaded) and
-  used before any translation service is asked. A new install of a popular pack starts mostly translated.
+  used before any translation service is asked. A new install of a popular pack starts mostly translated. Turkish
+  has a pack today; other languages fall back to the translation service.
 - **Your word wins.** Editable glossary (the same item always gets the same name) and personal corrections that
   override everything.
 - **Careful with limits.** Short texts are batched into one request. When a free quota runs out, the mod switches
@@ -95,7 +98,7 @@ tested yet.
    page and put it in your `mods/` folder.
 2. **1.20.1 only:** also install [Architectury API](https://modrinth.com/mod/architectury-api) and
    [Cloth Config](https://modrinth.com/mod/cloth-config). Other versions need no extra mods.
-3. In the game, set **Options → Language → Türkçe (Türkiye)**.
+3. In the game, set **Options → Language** to the language you want, for example Deutsch, Español or Türkçe.
 
 That is all. Quests, books and the optional mods are picked up if they are installed. If not, the game starts
 normally.
@@ -151,7 +154,7 @@ Step-by-step guide for 1.12.2: [docs/KURULUM_1.12.2.md](docs/KURULUM_1.12.2.md) 
 
 ## FAQ
 
-**Nothing is translated.** Check that the game language is Turkish, and that `enabled` is not `false` in
+**Nothing is translated.** Check that the game language is not English, and that `enabled` is not `false` in
 `settings.json`.
 
 **Some text is English for a few seconds.** A text is translated the first time it is shown. After that it comes
@@ -163,8 +166,9 @@ from the cache.
 a minute) and Google may block it if it sees too much traffic. It is the zero-setup fallback. A free Gemini key is
 better in quality and in limits.
 
-**Other languages?** The engine takes the target language from the game's language and has been written for any
-Minecraft language code, but Turkish is the only language it has been tuned and tested for.
+**Which languages?** The target is the language you picked in **Options → Language**, and the engine works with any
+Minecraft language code. Turkish is the one it has been tuned (prompt wording, shared pack) and tested for. Other
+languages use the same pipeline but are not verified yet, so reports are welcome.
 
 **Can I edit a bad translation?** Yes. Add it to `corrections.json` or, on 1.20.1, use the Corrections tab.
 
@@ -183,8 +187,8 @@ Other versions live under `versions/` and are built by the `versions.yml` workfl
 
 ## Contributing
 
-Issues and pull requests are welcome, especially bug reports with a log, better Turkish for the glossary, and
-support for more versions. Run the engine tests before you open a pull request.
+Issues and pull requests are welcome, especially bug reports with a log, better glossary entries for your language,
+verification of more languages, and support for more versions. Run the engine tests before you open a pull request.
 
 ## Licence and credits
 
@@ -192,7 +196,7 @@ AutoTranslation is free software under the **GNU Affero General Public License v
 
 The 1.20.1 module (`common/`, `forge/`, `fabric/`) is based on
 [AutoTranslation](https://github.com/Moirstral/AutoTranslation) by 墨涤千尘 (AGPL-3.0). The translation engine
-(`core/`), the other version modules (`versions/`), the Turkish pipeline, the quest and book integrations and the
+(`core/`), the other version modules (`versions/`), the translation pipeline, the quest and book integrations and the
 shared packs were added in this project. Details are in [NOTICE.md](NOTICE.md).
 
 FTB Quests, Patchouli, BetterQuesting, Architectury API and Cloth Config belong to their authors and are not

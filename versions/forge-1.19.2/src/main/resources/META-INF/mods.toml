@@ -9,8 +9,8 @@ version = "${version}"
 displayName = "AutoTranslation"
 authors = "yuefdev; based on AutoTranslation by 墨涤千尘"
 description = '''
-Translates the English text of your mods into Turkish while you play: item names, tooltips, menus, FTB Quests and
-Patchouli books. It works with no setup (keyless Google Translate) and better with a free Gemini key. Translation
+Translates the English text of your mods into the language you picked in Minecraft while you play: item names,
+tooltips, menus, FTB Quests and Patchouli books. It works with no setup (keyless Google Translate) and better with a free Gemini key. Translation
 happens when text is drawn; nothing in quest or book data is changed. Licensed under the GNU Affero General Public
 License v3.0; based on AutoTranslation by 墨涤千尘.
 '''

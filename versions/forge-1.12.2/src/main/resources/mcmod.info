@@ -2,7 +2,7 @@
   {
     "modid": "autotranslation",
     "name": "AutoTranslation",
-    "description": "Translates the English text of your mods into Turkish while you play: item names, tooltips, menus, BetterQuesting, FTB Quests and Patchouli. Works with no setup (keyless Google Translate), better with a free Gemini key. Based on AutoTranslation by 墨涤千尘 (AGPL-3.0).",
+    "description": "Translates the English text of your mods into the language you picked in Minecraft while you play: item names, tooltips, menus, BetterQuesting, FTB Quests and Patchouli. Works with no setup (keyless Google Translate), better with a free Gemini key. Based on AutoTranslation by 墨涤千尘 (AGPL-3.0).",
     "version": "${version}",
     "mcversion": "1.12.2",
     "url": "https://github.com/yuefdev/minecraft-ai-translator",

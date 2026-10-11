@@ -2,10 +2,11 @@
 
 # AutoTranslation
 
-**Her modpack'i Türkçe oyna. Kaynak paketi yok, mod yazarını beklemek yok.**
+**Her modpack'i kendi dilinde oyna. Kaynak paketi yok, mod yazarını beklemek yok.**
 
-AutoTranslation, modlarındaki İngilizce yazıları oynarken doğal Türkçeye çeviren, **istemci taraflı** bir Minecraft
-modudur: eşya adları, ipuçları, menüler, FTB Quests, Patchouli kitapları ve daha fazlası.
+AutoTranslation, modlarındaki İngilizce yazıları oynarken Minecraft'ta seçtiğin dile çeviren, **istemci taraflı** bir
+Minecraft modudur: eşya adları, ipuçları, menüler, FTB Quests, Patchouli kitapları ve daha fazlası. Almanca, İspanyolca,
+Türkçe, Japonca: çeviri hizmetinin desteklediği her dil.
 
 [![Lisans: AGPL-3.0](https://img.shields.io/github/license/yuefdev/minecraft-ai-translator?color=blue)](LICENSE)
 [![Yıldız](https://img.shields.io/github/stars/yuefdev/minecraft-ai-translator?style=flat)](https://github.com/yuefdev/minecraft-ai-translator/stargazers)
@@ -16,7 +17,7 @@ modudur: eşya adları, ipuçları, menüler, FTB Quests, Patchouli kitapları v
 
 <img src="docs/images/before-after-tr.png" alt="StoneBlock modpack'inden üç eşya ipucu: önce modsuz İngilizce, sonra modla Türkçe" width="840">
 
-<sub>Aynı eşyalar, aynı dünya, Minecraft 1.12.2 (StoneBlock). Solda mod kaldırılmış, sağda mod kurulu.</sub>
+<sub>Aynı eşyalar, aynı dünya, Minecraft 1.12.2 (StoneBlock), oyun dili Türkçe. Solda mod kaldırılmış, sağda mod kurulu.</sub>
 
 </div>
 
@@ -27,7 +28,7 @@ modudur: eşya adları, ipuçları, menüler, FTB Quests, Patchouli kitapları v
 Modların çoğu yalnızca İngilizce gelir; çeviri istekleri aylarca bekler ya da hiç birleştirilmez. Büyük bir modpack'te
 on binlerce yazı vardır. AutoTranslation bunları arka planda çevirir ve sonucu hatırlar.
 
-Bir StoneBlock oyunundan (yaklaşık 38.000 yazı) gerçek çıktı. Anahtarsız Google Çeviri, elle düzeltme yok:
+Bir StoneBlock oyunundan (yaklaşık 38.000 yazı) gerçek çıktı. Oyun dili Türkçe, yani modun ayarlanıp sınandığı dil. Anahtarsız Google Çeviri, elle düzeltme yok:
 
 | Mod | İngilizce | Türkçe |
 |---|---|---|
@@ -52,20 +53,21 @@ Bunlardan birini bozan çeviri reddedilir.
 ## Özellikler
 
 - **Kurulumsuz çalışır.** Hiçbir şey yapmasan da anahtarsız Google Çeviri kullanılır. Daha iyi, bağlamı anlayan
-  Türkçe için ücretsiz bir [Gemini](https://aistudio.google.com/apikey) anahtarı yapıştır. Groq, Mistral, OpenRouter,
+  çeviri için ücretsiz bir [Gemini](https://aistudio.google.com/apikey) anahtarı yapıştır. Groq, Mistral, OpenRouter,
   bilgisayarında çalışan [Ollama](https://ollama.com) ve OpenAI uyumlu her hizmet de olur. Hangi hizmet olduğunu
   anahtardan anlar.
-- **Her modu kendiliğinden çevirir.** Türkçe dosyası olmayan modların dil dosyaları ve ekranlara koda gömülü İngilizce
-  yazılar. Güncel tutulacak bir mod listesi yok.
+- **Her modu kendiliğinden çevirir.** Senin dilinde dosyası olmayan modların dil dosyaları ve ekranlara koda gömülü
+  İngilizce yazılar. Güncel tutulacak bir mod listesi yok.
 - **Görevler ve kitaplar.** FTB Quests (başlıklar, alt başlıklar, açıklamalar, hedefler, ödüller), Patchouli
   kitapları ve 1.12.2'de BetterQuesting.
 - **Oyun verine dokunmaz.** Çeviri yazı ekrana çizilirken yapılır. Görev kimlikleri, koşullar, ödüller, komutlar ve
   ilerleme olduğu gibi kalır.
 - **Kalıcı, çevrimdışı önbellek.** Her yazı bir kez çevrilir, sonra internetsiz de çalışır.
 - **Arka planda toplu ön çeviri (1.12.2).** Açılışta tüm modların dil dosyalarını çevirir; çoğu yazı ilk
-  göründüğünde zaten Türkçedir.
+  göründüğünde zaten çevrilmiştir.
 - **Ortak çeviri paketleri.** Hazır çeviriler indirilir (yalnızca indirme, hiçbir şey yüklenmez) ve çeviri hizmetine
-  sorulmadan önce kullanılır. Popüler bir paketin yeni kurulumu büyük ölçüde çevrilmiş başlar.
+  sorulmadan önce kullanılır. Popüler bir paketin yeni kurulumu büyük ölçüde çevrilmiş başlar. Bugün yalnızca Türkçe için paket var; diğer
+  dillerde çeviri hizmeti kullanılır.
 - **Son söz senin.** Düzenlenebilir sözlük (aynı eşya hep aynı adı alır) ve her şeyi geçersiz kılan kendi
   düzeltmelerin.
 - **Sınırlara saygılı.** Kısa yazılar tek istekte gönderilir. Ücretsiz kota dolunca önce yedek modele, sonra anahtarsız
@@ -94,7 +96,7 @@ henüz derlenmez ve sınanmaz.
    `mods/` klasörüne koy.
 2. **Yalnızca 1.20.1:** [Architectury API](https://modrinth.com/mod/architectury-api) ve
    [Cloth Config](https://modrinth.com/mod/cloth-config) de gerekir. Diğer sürümlerde ek mod gerekmez.
-3. Oyunda **Seçenekler → Dil → Türkçe (Türkiye)** seç.
+3. Oyunda **Seçenekler → Dil** bölümünden istediğin dili seç, örneğin Deutsch, Español ya da Türkçe.
 
 Hepsi bu. Görev ve kitap modları kuruluysa çevrilir; kurulu değilse oyun normal açılır.
 
@@ -153,7 +155,7 @@ model, anahtar, bağlantı sınaması), **Sözlük**, **Düzeltmeler**, **Durum*
 
 ## Sık sorulanlar
 
-**Hiçbir şey çevrilmiyor.** Oyun dilinin Türkçe olduğunu ve `settings.json` içinde `enabled` değerinin `false`
+**Hiçbir şey çevrilmiyor.** Oyun dilinin İngilizce olmadığını ve `settings.json` içinde `enabled` değerinin `false`
 olmadığını kontrol et.
 
 **Bazı yazılar birkaç saniye İngilizce kalıyor.** Yazı ilk gösterildiğinde çevrilir; sonrasında önbellekten gelir.
@@ -164,8 +166,9 @@ olmadığını kontrol et.
 çok istek görürse Google bir süre engelleyebilir. Kurulumsuz yedektir. Ücretsiz Gemini anahtarı hem kalitede hem
 sınırlarda daha iyidir.
 
-**Başka diller?** Motor hedef dili oyunun dilinden alır ve her Minecraft dil kodu için yazılmıştır, ama ayarlanıp
-sınanan tek dil Türkçedir.
+**Hangi diller?** Hedef dil, **Seçenekler → Dil**'de seçtiğin dildir ve motor her Minecraft dil koduyla çalışır.
+Ayarlanıp (istem yazımı, ortak paket) sınanan dil Türkçedir. Diğer diller aynı hattı kullanır ama henüz doğrulanmadı;
+bildirimler çok işe yarar.
 
 **Kötü bir çeviriyi düzeltebilir miyim?** Evet. `corrections.json` dosyasına ekle ya da 1.20.1'de Düzeltmeler
 sekmesini kullan.
@@ -188,8 +191,8 @@ Diğer sürümler `versions/` altındadır ve `versions.yml` iş akışıyla der
 
 ## Katkı
 
-Sorunlar ve çekme istekleri (pull request) açıktır. Özellikle log'lu hata bildirimleri, sözlük için daha iyi Türkçe ve
-yeni sürüm desteği çok işe yarar. Çekme isteğinden önce motor testlerini çalıştır.
+Sorunlar ve çekme istekleri (pull request) açıktır. Özellikle log'lu hata bildirimleri, kendi dilin için sözlük girdileri, yeni dillerin doğrulanması
+ve yeni sürüm desteği çok işe yarar. Çekme isteğinden önce motor testlerini çalıştır.
 
 ## Lisans ve atıflar
 
@@ -197,7 +200,7 @@ AutoTranslation, **GNU Affero Genel Kamu Lisansı v3.0** ile sunulan özgür yaz
 
 1.20.1 modülü (`common/`, `forge/`, `fabric/`), 墨涤千尘'in
 [AutoTranslation](https://github.com/Moirstral/AutoTranslation) projesini (AGPL-3.0) temel alır. Çeviri motoru
-(`core/`), diğer sürüm modülleri (`versions/`), Türkçe hattı, görev ve kitap entegrasyonları ve ortak paketler bu
+(`core/`), diğer sürüm modülleri (`versions/`), çeviri hattı, görev ve kitap entegrasyonları ve ortak paketler bu
 projede eklenmiştir. Ayrıntı: [NOTICE.md](NOTICE.md).
 
 FTB Quests, Patchouli, BetterQuesting, Architectury API ve Cloth Config yazarlarına aittir ve bu depoda dağıtılmaz.
