@@ -14,6 +14,10 @@ while you play: item names, tooltips, menus, FTB Quests, Patchouli books and mor
 
 [Türkçe](README_TR.md) · [Install](#install) · [Supported versions](#supported-versions) · [Settings](#settings) · [FAQ](#faq)
 
+<img src="docs/images/before-after.png" alt="Three item tooltips from the StoneBlock modpack, first in English without the mod, then in Turkish with it" width="840">
+
+<sub>Same items, same world, Minecraft 1.12.2 (StoneBlock). Left: mod removed. Right: mod installed.</sub>
+
 </div>
 
 ---
@@ -24,14 +28,27 @@ Most mods ship in English only, and translation pull requests can take months or
 have tens of thousands of strings. AutoTranslation translates them for you, in the background, and remembers the
 result.
 
-| Without the mod | With the mod (examples) |
-|---|---|
-| `Iron Ingot` | `Demir Külçesi` |
-| `Kill the Ender Dragon and collect its egg.` | `Ender Ejderhasını öldür ve yumurtasını topla.` |
-| `Deals §c%s§r damage to nearby mobs` | `Yakındaki yaratıklara §c%s§r hasar verir` |
+Real output from a StoneBlock run (about 38,000 texts), with keyless Google Translate and no manual edits:
+
+| Mod | English | Turkish |
+|---|---|---|
+| Ender IO | `Reanimated Enderman Head` | `Yeniden Canlandırılmış Enderman Kafası` |
+| Applied Energistics 2 | `4k ME Fluid Storage Cell` | `4k ME Sıvı Depolama Hücresi` |
+| Botania | `Block of Lavender Quartz` | `Lavanta Kuvars Bloğu` |
+| Cyclic | `Drain fluid that is nearby and below, filling it with blocks` | `Yakındaki ve altındaki sıvıyı boşaltın, bloklarla doldurun` |
+| Forestry | `Generates copper ore blocks in the world.` | `Dünyada bakır cevheri blokları üretir.` |
+| Forestry | `Players who enter the world for the first time get a Forester's Manual.` | `Dünyaya ilk kez giren oyunculara bir Ormancının El Kitabı verilir.` |
+| Draconic Evolution | `Auto feed is disabled.` | `Otomatik besleme devre dışı.` |
+
+Machine translation is not perfect: a Gemini key gives better results, and the glossary and personal corrections
+(see [Settings](#settings)) fix the rest. Proper names such as `Loonium` are left as they are.
 
 Colour codes (`§6…§r`), placeholders (`%s`, `{name}`), URLs and Patchouli commands are kept intact. A translation
 that loses any of them is rejected.
+
+<div align="center">
+<img src="docs/images/in-game.png" alt="The Minecraft inventory with the JEI item list; the hovered Botania item shows its tooltip in Turkish" width="720">
+</div>
 
 ## Features
 

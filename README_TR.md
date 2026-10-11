@@ -14,6 +14,10 @@ modudur: eşya adları, ipuçları, menüler, FTB Quests, Patchouli kitapları v
 
 [English](README.md) · [Kurulum](#kurulum) · [Desteklenen sürümler](#desteklenen-sürümler) · [Ayarlar](#ayarlar) · [Sık sorulanlar](#sık-sorulanlar)
 
+<img src="docs/images/before-after-tr.png" alt="StoneBlock modpack'inden üç eşya ipucu: önce modsuz İngilizce, sonra modla Türkçe" width="840">
+
+<sub>Aynı eşyalar, aynı dünya, Minecraft 1.12.2 (StoneBlock). Solda mod kaldırılmış, sağda mod kurulu.</sub>
+
 </div>
 
 ---
@@ -23,14 +27,27 @@ modudur: eşya adları, ipuçları, menüler, FTB Quests, Patchouli kitapları v
 Modların çoğu yalnızca İngilizce gelir; çeviri istekleri aylarca bekler ya da hiç birleştirilmez. Büyük bir modpack'te
 on binlerce yazı vardır. AutoTranslation bunları arka planda çevirir ve sonucu hatırlar.
 
-| Modsuz | Modla (örnekler) |
-|---|---|
-| `Iron Ingot` | `Demir Külçesi` |
-| `Kill the Ender Dragon and collect its egg.` | `Ender Ejderhasını öldür ve yumurtasını topla.` |
-| `Deals §c%s§r damage to nearby mobs` | `Yakındaki yaratıklara §c%s§r hasar verir` |
+Bir StoneBlock oyunundan (yaklaşık 38.000 yazı) gerçek çıktı. Anahtarsız Google Çeviri, elle düzeltme yok:
+
+| Mod | İngilizce | Türkçe |
+|---|---|---|
+| Ender IO | `Reanimated Enderman Head` | `Yeniden Canlandırılmış Enderman Kafası` |
+| Applied Energistics 2 | `4k ME Fluid Storage Cell` | `4k ME Sıvı Depolama Hücresi` |
+| Botania | `Block of Lavender Quartz` | `Lavanta Kuvars Bloğu` |
+| Cyclic | `Drain fluid that is nearby and below, filling it with blocks` | `Yakındaki ve altındaki sıvıyı boşaltın, bloklarla doldurun` |
+| Forestry | `Generates copper ore blocks in the world.` | `Dünyada bakır cevheri blokları üretir.` |
+| Forestry | `Players who enter the world for the first time get a Forester's Manual.` | `Dünyaya ilk kez giren oyunculara bir Ormancının El Kitabı verilir.` |
+| Draconic Evolution | `Auto feed is disabled.` | `Otomatik besleme devre dışı.` |
+
+Makine çevirisi kusursuz değildir: Gemini anahtarı daha iyi sonuç verir, geri kalanı sözlük ve kendi düzeltmelerinle
+(bkz. [Ayarlar](#ayarlar)) düzeltirsin. `Loonium` gibi özel adlar olduğu gibi kalır.
 
 Renk kodları (`§6…§r`), yer tutucular (`%s`, `{name}`), bağlantılar ve Patchouli komutları olduğu gibi korunur.
 Bunlardan birini bozan çeviri reddedilir.
+
+<div align="center">
+<img src="docs/images/in-game.png" alt="Minecraft envanteri ve JEI eşya listesi; üzerine gelinen Botania eşyasının ipucu Türkçe görünüyor" width="720">
+</div>
 
 ## Özellikler
 
