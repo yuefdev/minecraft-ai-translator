@@ -1,7 +1,7 @@
 modLoader = "javafml"
 loaderVersion = "[36,)"
 license = "GNU Affero General Public License v3.0"
-issueTrackerURL = "https://github.com/LangYueMc/AutoTranslation/issues/new"
+issueTrackerURL = "https://github.com/yuefdev/minecraft-ai-translator/issues/new"
 
 [[mods]]
 modId = "autotranslation"
