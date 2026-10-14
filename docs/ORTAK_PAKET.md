@@ -36,7 +36,7 @@ Ayarı `wrangler.jsonc` içindedir; adres `EngineSettings.DEFAULT_PACK_URL` olar
 2. Paketi üret (Gson gerekir; Minecraft'ın `libraries` klasöründeki `gson-*.jar` yeter):
 
    ```bash
-   java -cp "AutoTranslation-1.3.0+mc1.12.2-forge.jar;gson.jar" me.langyue.autotranslation.core.pack.PackBuilder translations.jsonl tr_tr pack-site
+   java -cp "AutoTranslation-1.4.0+mc1.12.2-forge.jar;gson.jar" me.langyue.autotranslation.core.pack.PackBuilder translations.jsonl tr_tr pack-site
    ```
 
    Aynı klasörde yeniden çalıştırmak pakete ekler; farklı oyuncuların önbellekleri birleştirilebilir. Yalnızca dil dosyası ve

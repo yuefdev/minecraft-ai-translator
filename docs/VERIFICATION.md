@@ -78,5 +78,5 @@ zaten vardır).
 
 ## Jar dosyaları
 
-* 1.20.1: `forge/build/libs/AutoTranslation-1.3.0+mc1.20.1-forge.jar` (CI çıktısı `forge-libs`).
+* 1.20.1: `forge/build/libs/AutoTranslation-1.4.0+mc1.20.1-forge.jar` (CI çıktısı `forge-libs`).
 * Diğer sürümler: `Other Minecraft versions` iş akışının `jar-<modül>` çıktıları.

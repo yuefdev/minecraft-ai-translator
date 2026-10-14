@@ -1,3 +1,9 @@
+# V1.4.0 (FTB Quests parsing fallback)
+
+- Minecraft 26.1.2 / NeoForge: malformed cached or corrected quest translations fall back to the original title, subtitle or complete description instead of letting a text-parsing exception crash the quest book.
+- The complete original description is retained on parsing failure, preserving blank lines and page indices.
+- Added smoke regressions for malformed Russian Unicode escapes, valid Cyrillic translations and description page breaks.
+
 # V1.3.0 (Turkish translation pipeline)
 
 - Targets Minecraft 1.20.1 / Forge 47 (dependency versions verified by a real CI build).

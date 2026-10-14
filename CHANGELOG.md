@@ -1,3 +1,9 @@
+# V1.4.0 (FTB Quests metin ayrıştırma koruması)
+
+- Minecraft 26.1.2 / NeoForge: önbellekteki veya kişisel düzeltmelerdeki bozuk görev çevirileri ayrıştırılamadığında, görev kitabını çökerten hata yerine özgün başlık, alt başlık veya açıklama gösterilir.
+- Açıklama ayrıştırılamadığında özgün açıklamanın tamamına dönülür; boş satırlar ve sayfa indeksleri korunur.
+- Bozuk Rusça Unicode kaçışları, geçerli Kiril çevirileri ve açıklama sayfa ayrımları için regresyon kontrolleri eklendi.
+
 # V1.3.0 (Türkçe çeviri hattı)
 
 - Minecraft 1.20.1 / Forge 47 hedeflendi (bağımlılık sürümleri CI'da gerçek derlemeyle doğrulandı).

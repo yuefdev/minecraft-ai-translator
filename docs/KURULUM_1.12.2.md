@@ -9,7 +9,7 @@
 
 1. GitHub'da depo → **Actions** → **Other Minecraft versions** (veya **Real 1.12.2 install**) iş akışının en son başarılı çalışmasını açın.
 2. Sayfanın altındaki **Artifacts** bölümünden **`jar-forge-1.12.2`** dosyasını indirip zip'i açın.
-3. İçinden **`AutoTranslation-1.3.0+mc1.12.2-forge.jar`** dosyasını alın. Adında `-dev` geçen dosya **değil**: o yalnızca geliştirme ortamı içindir.
+3. İçinden **`AutoTranslation-1.4.0+mc1.12.2-forge.jar`** dosyasını alın. Adında `-dev` geçen dosya **değil**: o yalnızca geliştirme ortamı içindir.
 
 ## 3. Kurun
 
