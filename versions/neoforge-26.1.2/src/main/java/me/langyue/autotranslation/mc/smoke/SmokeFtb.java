@@ -6,6 +6,7 @@ import dev.ftb.mods.ftbquests.quest.ChapterGroup;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import me.langyue.autotranslation.mc.ftb.FtbQuestsSupport;
 import me.langyue.autotranslation.core.smoke.SmokeReport;
+import me.langyue.autotranslation.engine.Engine;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
@@ -59,9 +60,51 @@ final class SmokeFtb {
                         return quest.getRawTitle().equals(ORIGINAL_TITLE) && gold && translated.getString().startsWith("TR|");
                     }, 600,
                     () -> "raw title or colour style changed");
+            checkInvalidRussianTranslation(report, quest);
         } catch (Throwable t) {
             report.check("ftbquests: functional test setup", false, t.toString());
         }
+    }
+
+    /** A stale cache or personal correction must not let an invalid Unicode escape crash the renderer. */
+    private static void checkInvalidRussianTranslation(SmokeReport report, Quest quest) {
+        Engine engine = Engine.get();
+        String source = "Collect &6Copper&r Ingots";
+        engine.corrections().putInMemory(source, "Соберите &6медь&r \\uZZZZ", null);
+        engine.applyConfig();
+        try {
+            report.check("ftbquests: malformed Russian title falls back to original",
+                    FtbQuestsSupport.title(quest, source) == null, "");
+        } catch (RuntimeException e) {
+            report.check("ftbquests: malformed Russian title falls back to original", false, e.toString());
+        }
+        try {
+            report.check("ftbquests: malformed Russian subtitle falls back to original",
+                    FtbQuestsSupport.subtitle(quest, source) == null, "");
+        } catch (RuntimeException e) {
+            report.check("ftbquests: malformed Russian subtitle falls back to original", false, e.toString());
+        }
+        try {
+            report.check("ftbquests: malformed Russian description falls back to original",
+                    FtbQuestsSupport.description(quest, java.util.Arrays.asList("", source, "{@pagebreak}")) == null, "");
+        } catch (RuntimeException e) {
+            report.check("ftbquests: malformed Russian description falls back to original", false, e.toString());
+        }
+        engine.corrections().putInMemory(source, "Соберите &6медь&r", null);
+        engine.applyConfig();
+        Component valid = FtbQuestsSupport.title(quest, source);
+        report.check("ftbquests: valid Cyrillic translation still renders",
+                valid != null && valid.getString().equals("Соберите медь"), "");
+        java.util.List<String> lines = java.util.Arrays.asList("", source, "{@pagebreak}");
+        java.util.List<Component> description = FtbQuestsSupport.description(quest, lines);
+        Component pageBreak = dev.ftb.mods.ftbquests.util.TextUtils.parseRawText("{@pagebreak}",
+                net.minecraft.data.registries.VanillaRegistries.createLookup());
+        report.check("ftbquests: valid description keeps blank lines and page breaks",
+                description != null && description.size() == lines.size()
+                        && description.get(0).getString().isEmpty()
+                        && description.get(1).getString().equals("Соберите медь")
+                        && description.get(2).getString().equals(pageBreak.getString()),
+                description == null ? "description unavailable" : description.toString());
     }
 
     @SuppressWarnings("unchecked")

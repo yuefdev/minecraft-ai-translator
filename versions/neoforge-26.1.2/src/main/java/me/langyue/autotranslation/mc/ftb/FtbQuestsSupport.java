@@ -11,6 +11,7 @@ import dev.ftb.mods.ftbquests.quest.task.Task;
 import dev.ftb.mods.ftbquests.util.TextUtils;
 import me.langyue.autotranslation.core.mask.MaskProfile;
 import me.langyue.autotranslation.core.service.Types.Content;
+import me.langyue.autotranslation.core.util.CoreLog;
 import me.langyue.autotranslation.engine.Engine;
 import me.langyue.autotranslation.engine.TextSupport;
 import net.minecraft.ChatFormatting;
@@ -69,7 +70,10 @@ public final class FtbQuestsSupport {
         List<Component> result = new ArrayList<Component>(snapshot.size());
         for (int i = 0; i < snapshot.size(); i++) {
             String line = translated.get(i);
-            result.add(line.equals(snapshot.get(i)) ? TextUtils.parseRawText(line, lookup(quest)) : build(engine, quest, line, snapshot.get(i)));
+            Component component = line.equals(snapshot.get(i)) ? parse(quest, line) : build(engine, quest, line, snapshot.get(i));
+            // Returning null lets the mixin use the complete original description, including its page indices.
+            if (component == null) return null;
+            result.add(component);
         }
         return java.util.Collections.unmodifiableList(result);
     }
@@ -86,12 +90,23 @@ public final class FtbQuestsSupport {
 
     private static Component build(Engine engine, QuestObjectBase object, String translated, String raw) {
         if (translated == null) return null;
-        Component component = TextUtils.parseRawText(translated, lookup(object));
+        Component component = parse(object, translated);
+        if (component == null) return null;
         if (engine.showOriginal()) {
             component = component.copy().append(Texts.literal(" (" + TextSupport.plainFtb(raw) + ")")
                     .withStyle(ChatFormatting.GRAY));
         }
         return component;
+    }
+
+    /** Cached text and personal corrections can contain escapes/markup that FTB's parser cannot read. */
+    private static Component parse(QuestObjectBase object, String text) {
+        try {
+            return TextUtils.parseRawText(text, lookup(object));
+        } catch (RuntimeException e) {
+            CoreLog.debug("Invalid FTB Quests translation; using original text: " + e.getClass().getSimpleName());
+            return null;
+        }
     }
 
     /** The registry lookup FTB Quests uses; outside a world (no client level yet) the vanilla registries serve as well. */
