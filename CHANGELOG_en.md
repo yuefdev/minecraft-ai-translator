@@ -1,3 +1,10 @@
+# Unreleased (Fabric support)
+
+- Fabric builds for 1.16.5, 1.18.2, 1.19.2, 1.20.1, 1.21.1 and 26.1.2. The code is shared with the Forge/NeoForge build of the same version, including the FTB Quests and Patchouli integrations (FTB Quests only on 26.1.2).
+- Fabric builds other than 1.20.1 need only Fabric Loader (no Fabric API). 1.20.1 Fabric needs Fabric API, Architectury API and Cloth Config; its settings screen opens from Mod Menu.
+- 1.20.1 Fabric: the Mod Menu build dependency moved from 8.0.0 (made for 1.20.2) to 7.2.2, which matches 1.20.1 (with 8.0.0 the development run did not start).
+- `ClientInit` in the Forge/NeoForge modules is now loader neutral; behaviour is unchanged.
+
 # V1.4.0 (FTB Quests parsing fallback)
 
 - Minecraft 26.1.2 / NeoForge: malformed cached or corrected quest translations fall back to the original title, subtitle or complete description instead of letting a text-parsing exception crash the quest book.

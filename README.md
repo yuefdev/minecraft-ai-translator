@@ -87,17 +87,24 @@ that loses any of them is rejected.
 | 1.18.2 | Forge 40 | 17 | FTB Quests, Patchouli | `settings.json` |
 | 1.16.5 | Forge 36 | 8+ | FTB Quests, Patchouli | `settings.json` |
 | 1.12.2 | Forge 14.23.5 | 8 | BetterQuesting, FTB Quests, Patchouli | `settings.json` |
+| 1.20.1 | Fabric | 17 | FTB Quests, Patchouli | In-game screen (Turkish), via Mod Menu |
+| 1.21.1 | Fabric | 21 | FTB Quests, Patchouli | `settings.json` |
+| 26.1.2 | Fabric | 25 | FTB Quests | `settings.json` |
+| 1.19.2 | Fabric | 17 | FTB Quests, Patchouli | `settings.json` |
+| 1.18.2 | Fabric | 17 | FTB Quests, Patchouli | `settings.json` |
+| 1.16.5 | Fabric | 8+ | FTB Quests, Patchouli | `settings.json` |
 
 Every version builds in CI and is started in a real Minecraft client with and without the optional mods. See
-[what is and is not verified](docs/VERIFICATION.md) (Turkish). Fabric code is in the repository but is not built or
-tested yet.
+[what is and is not verified](docs/VERIFICATION.md) (Turkish). The Fabric builds share their code with the Forge/NeoForge
+build of the same Minecraft version. There is no Fabric build for 1.12.2.
 
 ## Install
 
 1. Download the jar for your version from the [Releases](https://github.com/yuefdev/minecraft-ai-translator/releases)
    page and put it in your `mods/` folder.
 2. **1.20.1 only:** also install [Architectury API](https://modrinth.com/mod/architectury-api) and
-   [Cloth Config](https://modrinth.com/mod/cloth-config). Other versions need no extra mods.
+   [Cloth Config](https://modrinth.com/mod/cloth-config) (on Fabric also [Fabric API](https://modrinth.com/mod/fabric-api)).
+   Other versions need no extra mods; their Fabric builds need only Fabric Loader.
 3. In the game, set **Options → Language** to the language you want, for example Deutsch, Español or Türkçe.
 
 That is all. Quests, books and the optional mods are picked up if they are installed. If not, the game starts

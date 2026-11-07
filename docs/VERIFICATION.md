@@ -29,7 +29,8 @@ sınanmadığını ayırır. Sınanmayan hiçbir şey "doğrulanmış" olarak li
    Çeviri'ye gönderilir ve Türkçe sonuçlar yazdırılır (`live-free.yml`, `LiveFreeServicesTest`).
 
 İş akışları: `.github/workflows/forge-build.yml` (1.20.1 derleme + birim testleri), `smoke.yml` (1.20.1 oyun
-başlatma), `versions.yml` (diğer sürümler: derleme + oyun başlatma).
+başlatma), `versions.yml` (diğer sürümler ve Fabric modülleri: derleme + oyun başlatma). 1.20.1 Fabric, `forge-build.yml` ve
+`smoke.yml` içinde Forge ile birlikte çalışır.
 
 ## Sonuçlar
 
@@ -48,6 +49,12 @@ zaten vardır).
 | 1.12.2 Forge | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 1.21.1 NeoForge | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | 26.1.2 NeoForge | ✅ | ✅ | ✅ | ✅ | ✅ | — (Patchouli bu sürüme çıkmadı) | — |
+| 1.20.1 Fabric | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 1.21.1 Fabric | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 26.1.2 Fabric | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — (Patchouli bu sürüme çıkmadı) | — |
+| 1.19.2 Fabric | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 1.18.2 Fabric | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 1.16.5 Fabric | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — |
 
 ## Gerçek kurulum ve canlı hizmet sonuçları
 
@@ -68,7 +75,10 @@ zaten vardır).
 * **Gerçek bir yapay zekâ modeliyle (Gemini vb.) çeviri kalitesi** ölçülmedi: CI'da anahtar yok. Yalnızca anahtarsız
   Google Çeviri canlı denendi (yukarıda).
 * **Gerçek görev tamamlama** (eşya teslim etme, ödül alma) CI'da oynanmadı; görev verisinin değişmediği ölçüldü.
-* **Fabric** modülü derlenmiyor ve sınanmadı.
+* **Fabric** sürümleri yeni eklendi; tablodaki ⏳ satırlar CI sonucu gelene kadar doğrulanmış sayılmaz. Altı Fabric
+  sürümünün `runSmokeClient -PsmokeMods` testi 2026-11-07'de Windows'ta yerelde geçti (FTB Quests ve, 26.1.2 dışında,
+  Patchouli yüklü; tüm kontroller ✅). Fabric için gerçek kurulum (yayın jar'ı) testi yapılmadı. 1.12.2 için Fabric
+  sürümü yoktur.
 * **Büyük mod paketleri** (yüzlerce mod) ve binlerce metinle performans sınanmadı.
 * 1.16.5'te geliştirme ortamı (Architectury Loom) Forge'un yeniden adlandırdığı iki `Transformation` yöntemini
   bulamıyordu; yalnızca geliştirme çalıştırmasında devreye giren küçük bir düzeltme eklendi

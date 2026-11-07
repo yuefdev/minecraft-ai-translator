@@ -9,6 +9,39 @@ architectury {
     fabric()
 }
 
+loom {
+    // Remap mixin annotations with tiny-remapper instead of the legacy refmap annotation processor: the processor
+    // leaves Minecraft class names inside descriptors of mixins that target other mods (Patchouli, FTB Quests)
+    // unmapped, which would not match in a real (intermediary) Fabric game.
+    mixin {
+        useLegacyMixinAp = false
+    }
+    runs {
+        // Headless start-up check used by CI: boots the real game, verifies that the mixins were applied and
+        // runs the translation pipeline against a local fake provider, then writes build/smoke/result.json.
+        smokeClient {
+            client()
+            property "autotranslation.smoketest", "true"
+            property "autotranslation.smoketest.output", file("build/smoke/result.json").absolutePath
+            programArg "--username"
+            programArg "SmokeTester"
+            runDir "build/smoke-run"
+        }
+    }
+}
+
+// The FTB Quests / Patchouli integrations are shared with the Forge module: both mods use the same class names on
+// Fabric and Forge, and these classes use no Forge API.
+sourceSets {
+    main {
+        java {
+            srcDir "../forge/src/main/java"
+            exclude "me/langyue/autotranslation/forge/AutoTranslationForge.java"
+            exclude "me/langyue/autotranslation/forge/mixin/GameRendererMixin.java"
+        }
+    }
+}
+
 configurations {
     common
     shadowCommon // Don't use shadow from the shadow plugin because we don't want IDEA to index this.
@@ -31,9 +64,29 @@ dependencies {
         exclude(group: "net.fabricmc.fabric-api")
     }
 
+    // Optional integrations are compile-only: the game starts without them.
+    modCompileOnly("dev.ftb.mods:ftb-library-fabric:${rootProject.ftb_library_version}") { transitive = false }
+    modCompileOnly("dev.ftb.mods:ftb-teams-fabric:${rootProject.ftb_teams_version}") { transitive = false }
+    modCompileOnly("dev.ftb.mods:ftb-quests-fabric:${rootProject.ftb_quests_version}") { transitive = false }
+    modCompileOnly("vazkii.patchouli:Patchouli:${rootProject.patchouli_version}") { transitive = false }
+
     common(project(path: ":common", configuration: "namedElements")) { transitive false }
     shadowCommon(project(path: ":common", configuration: "transformProductionFabric")) { transitive false }
 }
+
+// -PsmokeMods puts the optional integrations on the runtime classpath of runSmokeClient.
+if (project.hasProperty("smokeMods")) {
+    dependencies {
+        modLocalRuntime("dev.ftb.mods:ftb-library-fabric:${rootProject.ftb_library_version}") { transitive = false }
+        modLocalRuntime("dev.ftb.mods:ftb-teams-fabric:${rootProject.ftb_teams_version}") { transitive = false }
+        modLocalRuntime("dev.ftb.mods:ftb-quests-fabric:${rootProject.ftb_quests_version}") { transitive = false }
+        modLocalRuntime("vazkii.patchouli:Patchouli:${rootProject.patchouli_version}") { transitive = false }
+        // FTB Quests (task screen block) needs Team Reborn Energy on Fabric; Patchouli needs the Fiber config library
+        modLocalRuntime("teamreborn:energy:3.0.0") { transitive = false }
+        localRuntime("me.zeroeightsix:fiber:0.23.0-2") { transitive = false }
+    }
+}
+
 version = "${rootProject.mod_version}+mc${rootProject.minecraft_version}-fabric"
 
 processResources {

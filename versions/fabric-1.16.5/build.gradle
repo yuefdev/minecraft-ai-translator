@@ -1,0 +1,119 @@
+plugins {
+    id "net.fabricmc.fabric-loom-remap" version "1.19.4"
+}
+
+// Fabric build of Minecraft 1.16.5. The mod code is the code of ../forge-1.16.5 (everything except its Forge/NeoForge
+// entry point) plus the small Fabric entry point in ../fabric-common; only Fabric Loader is required at run time.
+def shared = "../forge-1.16.5"
+
+base {
+    archivesName = "AutoTranslation"
+}
+version = "${mod_version}+mc${minecraft_version}-fabric"
+group = "me.langyue"
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(17)
+}
+
+repositories {
+    maven { url "https://maven.blamejared.com" }
+    maven { url "https://maven.architectury.dev/" }
+    maven {
+        url "https://maven.ftb.dev/releases"
+        content {
+            includeGroup "dev.latvian.mods"
+            includeGroup "dev.ftb.mods"
+        }
+    }
+    maven {
+        url "https://maven.saps.dev/releases"
+        content {
+            includeGroup "dev.latvian.mods"
+            includeGroup "dev.ftb.mods"
+        }
+    }
+    maven {
+        url "https://cursemaven.com"
+        content {
+            includeGroup "curse.maven"
+        }
+    }
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java {
+            // the version independent engine is shared by every Minecraft version
+            srcDir "../../core/src/main/java"
+            srcDir "$shared/src/main/java"
+            srcDir "../fabric-common/src/main/java"
+            exclude "me/langyue/autotranslation/mc/AutoTranslationMod.java"
+        }
+        resources {
+            srcDir "../../core/src/main/resources"
+            srcDir "$shared/src/main/resources"
+            srcDir "../fabric-common/src/main/resources"
+            exclude "META-INF/**", "pack.mcmeta"
+        }
+    }
+}
+
+loom {
+    runs {
+        // Headless start-up check used by CI (see .github/workflows/versions.yml)
+        smokeClient {
+            client()
+            property "autotranslation.smoketest", "true"
+            property "autotranslation.smoketest.output", file("build/smoke/result.json").absolutePath
+            programArg "--username"
+            programArg "SmokeTester"
+            runDir "build/smoke-run"
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+
+    // Optional integrations are compile-only: the game starts without them.
+    modCompileOnly("dev.ftb.mods:ftb-library-fabric:${ftb_library_version}") { transitive = false }
+    modCompileOnly("dev.ftb.mods:ftb-teams-fabric:${ftb_teams_version}") { transitive = false }
+    modCompileOnly("dev.ftb.mods:ftb-quests-fabric:${ftb_quests_version}") { transitive = false }
+    modCompileOnly("vazkii.patchouli:Patchouli:${patchouli_version}") { transitive = false }
+}
+
+// -PsmokeMods puts the optional integrations on the runtime classpath of runSmokeClient.
+if (project.hasProperty("smokeMods")) {
+    dependencies {
+        // FTB Quests needs Fabric API (without the older Fabric Loader it depends on) and Architectury API when it runs
+        // (Fabric API is compile-only as well so that Loom can resolve the methods these mods inherit from it when it remaps them)
+        modLocalRuntime("net.fabricmc.fabric-api:fabric-api:${fabric_api_version}") { exclude group: "net.fabricmc", module: "fabric-loader" }
+        modCompileOnly("net.fabricmc.fabric-api:fabric-api:${fabric_api_version}") { exclude group: "net.fabricmc", module: "fabric-loader" }
+        modLocalRuntime("me.shedaniel:architectury-fabric:1.32.68") { transitive = false }
+        modLocalRuntime("dev.ftb.mods:ftb-library-fabric:${ftb_library_version}") { transitive = false }
+        modLocalRuntime("dev.ftb.mods:ftb-teams-fabric:${ftb_teams_version}") { transitive = false }
+        modLocalRuntime("dev.ftb.mods:ftb-quests-fabric:${ftb_quests_version}") { transitive = false }
+        // mandatory dependency of FTB Quests here ("itemfilters"); CurseForge file of the matching Fabric build
+        modLocalRuntime("curse.maven:item-filters-309674:3769704") { transitive = false }
+        modLocalRuntime("vazkii.patchouli:Patchouli:${patchouli_version}") { transitive = false }
+        // config library of Patchouli on Fabric (plain jar, not a mod)
+        localRuntime("me.zeroeightsix:fiber:0.23.0-2") { transitive = false }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = 8
+}
+
+processResources {
+    def props = [version: mod_version, minecraft_range: "~1.16.4", java_version: "8"]
+    inputs.properties props
+    filesMatching("fabric.mod.json") {
+        expand props
+    }
+}

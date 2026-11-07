@@ -7,22 +7,28 @@ import me.langyue.autotranslation.engine.EngineSettings;
 import me.langyue.autotranslation.engine.Platform;
 import me.langyue.autotranslation.engine.SettingsStore;
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
-/** Client side start-up: creates the engine and enables the integrations of the mods that are installed. */
-final class ClientInit {
+/**
+ * Client side start-up: creates the engine and enables the integrations of the mods that are installed.
+ * Loader neutral: the Forge/NeoForge and the Fabric entry points pass in what differs between the loaders.
+ */
+public final class ClientInit {
     static final Logger LOGGER = LogUtils.getLogger();
 
     private ClientInit() {
     }
 
-    static void init() {
+    /**
+     * @param gameDir      the game directory
+     * @param isModLoaded  whether a mod with the given id is installed
+     * @param onClientTick registers a task that runs at the end of every client tick
+     */
+    public static void init(Path gameDir, Predicate<String> isModLoaded, Consumer<Runnable> onClientTick) {
         CoreLog.setSink((level, message, error) -> {
             switch (level) {
                 case DEBUG:
@@ -39,7 +45,7 @@ final class ClientInit {
                     break;
             }
         });
-        final Path dir = FMLPaths.GAMEDIR.get().resolve("AutoTranslation");
+        final Path dir = gameDir.resolve("AutoTranslation");
         Platform platform = new Platform() {
             @Override
             public Path dataDir() {
@@ -59,16 +65,14 @@ final class ClientInit {
 
             @Override
             public boolean isModLoaded(String modId) {
-                return ModList.get().isLoaded(modId);
+                return isModLoaded.test(modId);
             }
         };
         EngineSettings settings = new SettingsStore(dir.resolve("settings.json")).load();
         Engine engine = Engine.start(platform, settings);
-        MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent event) -> {
-            if (event.phase == TickEvent.Phase.END) {
-                Engine current = Engine.get();
-                if (current != null) current.tick();
-            }
+        onClientTick.accept(() -> {
+            Engine current = Engine.get();
+            if (current != null) current.tick();
         });
 
         if (engine.isModLoaded("ftbquests")) {
@@ -78,7 +82,7 @@ final class ClientInit {
             me.langyue.autotranslation.mc.patchouli.PatchouliBootstrap.init();
         }
         if (Boolean.getBoolean("autotranslation.smoketest")) {
-            me.langyue.autotranslation.mc.smoke.SmokeTest.register();
+            me.langyue.autotranslation.mc.smoke.SmokeTest.register(onClientTick);
         }
         CoreLog.info("AutoTranslation (Turkish pipeline) started for Minecraft 1.19.2");
         LOGGER.info("AutoTranslation started; data folder: {}", dir);

@@ -46,11 +46,17 @@ jobs:
           ./gradlew :forge:build --no-daemon --console=plain > forge-build.log 2>&1
           echo "exit=$?" > forge-build.status
 
+      - name: Build Fabric jar
+        continue-on-error: true
+        run: |
+          ./gradlew :fabric:build --no-daemon --console=plain > fabric-build.log 2>&1
+          echo "exit=$?" > fabric-build.status
+
       - name: Inspect the built jar
         continue-on-error: true
         run: |
           shopt -s nullglob
-          for jar in forge/build/libs/*.jar; do
+          for jar in forge/build/libs/*.jar fabric/build/libs/*.jar; do
             echo "== $jar ($(stat -c %s "$jar") bytes)"
             sha256sum "$jar"
             case "$jar" in *-dev*|*-sources*|*-shadow*) continue;; esac
@@ -59,7 +65,8 @@ jobs:
             echo "Turkish language file       : $(unzip -l "$jar" | grep -c 'assets/autotranslation/lang/tr_tr.json')"
             echo "starter glossary            : $(unzip -l "$jar" | grep -c 'autotranslation/glossary-tr.json')"
             echo "mixin configs / refmaps     :"; unzip -l "$jar" | grep -E "mixins.json|refmap" | awk '{print "   " $4}'
-            unzip -p "$jar" META-INF/mods.toml | grep -E '^(version|modId|displayName|license) ' | head -n 4
+            unzip -p "$jar" META-INF/mods.toml 2>/dev/null | grep -E '^(version|modId|displayName|license) ' | head -n 4
+            unzip -p "$jar" fabric.mod.json 2>/dev/null | grep -E '"(id|version|minecraft)"' | head -n 3
           done > jar-inspection.txt 2>&1
 
       - name: Scan the repository for credential-like strings
@@ -78,10 +85,16 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
+          name: fabric-libs
+          path: fabric/build/libs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
           name: logs-and-reports
           path: |
             core-test.log
             forge-build.log
+            fabric-build.log
             jar-inspection.txt
             core/build/reports
 
@@ -90,10 +103,12 @@ jobs:
           echo "##### 1.20.1 BUILD SUMMARY"
           echo "core tests : $(cat core-test.status 2>/dev/null) | passed lines: $(grep -cE ' PASSED$' core-test.log 2>/dev/null) | failed lines: $(grep -cE ' FAILED$' core-test.log 2>/dev/null)"
           echo "forge build: $(cat forge-build.status 2>/dev/null)"
-          cat jar-inspection.txt 2>/dev/null | head -n 20
+          echo "fabric build: $(cat fabric-build.status 2>/dev/null)"
+          cat jar-inspection.txt 2>/dev/null | head -n 40
           cat scan.txt 2>/dev/null
           ok=1
           grep -q "exit=0" core-test.status || { ok=0; grep -E -A12 "What went wrong" core-test.log | head -n 30; grep -E " FAILED$" core-test.log | head -n 20; }
           grep -q "exit=0" forge-build.status || { ok=0; grep -E -A14 "What went wrong" forge-build.log | head -n 30; grep -E -B1 -A3 "error:" forge-build.log | head -n 40; }
+          grep -q "exit=0" fabric-build.status || { ok=0; grep -E -A14 "What went wrong" fabric-build.log | head -n 30; grep -E -B1 -A3 "error:" fabric-build.log | head -n 40; }
           grep -qE ": 0$" scan.txt || { ok=0; echo "credential scan found files"; }
           [ "$ok" = 1 ] && echo "1.20.1 BUILD PASSED" || { echo "1.20.1 BUILD FAILED"; exit 1; }

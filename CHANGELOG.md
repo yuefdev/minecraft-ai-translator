@@ -1,3 +1,10 @@
+# Yayınlanmamış (Fabric desteği)
+
+- Fabric sürümleri: 1.16.5, 1.18.2, 1.19.2, 1.20.1, 1.21.1 ve 26.1.2. Kod aynı sürümün Forge/NeoForge koduyla ortaktır; FTB Quests ve Patchouli (26.1.2'de yalnızca FTB Quests) entegrasyonları dahildir.
+- 1.20.1 dışındaki Fabric sürümleri yalnızca Fabric Loader ister (Fabric API gerekmez). 1.20.1 Fabric; Fabric API, Architectury API ve Cloth Config ister, ayar ekranı Mod Menu'den açılır.
+- 1.20.1 Fabric: Mod Menu derleme bağımlılığı 1.20.2 için olan 8.0.0'dan 1.20.1'e uyan 7.2.2'ye çekildi (8.0.0 ile geliştirme ortamında oyun açılmıyordu).
+- Forge/NeoForge modüllerinde `ClientInit` yükleyiciden bağımsız hale getirildi; davranış değişmedi.
+
 # V1.4.0 (FTB Quests metin ayrıştırma koruması)
 
 - Minecraft 26.1.2 / NeoForge: önbellekteki veya kişisel düzeltmelerdeki bozuk görev çevirileri ayrıştırılamadığında, görev kitabını çökerten hata yerine özgün başlık, alt başlık veya açıklama gösterilir.

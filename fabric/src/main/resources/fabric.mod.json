@@ -3,9 +3,10 @@
   "id": "autotranslation",
   "version": "${version}",
   "name": "AutoTranslation",
-  "description": "",
+  "description": "Translates the English text of your mods into the language you picked in Minecraft while you play: item names, tooltips, menus, FTB Quests and Patchouli books. It works with no setup (keyless Google Translate) and better with a free Gemini key. Translation happens when text is drawn; nothing in quest or book data is changed. Based on AutoTranslation by 墨涤千尘.",
   "authors": [
-    "墨涤千尘"
+    "yuefdev",
+    "墨涤千尘 (original AutoTranslation)"
   ],
   "contact": {
     "sources": "https://github.com/yuefdev/minecraft-ai-translator",
@@ -24,12 +25,20 @@
   },
   "mixins": [
     "autotranslation.mixins.json",
-    "autotranslation-common.mixins.json"
+    "autotranslation-common.mixins.json",
+    "autotranslation-compat.mixins.json"
   ],
   "depends": {
-    "fabricloader": "*",
-    "minecraft": ">=1.20.0",
+    "fabricloader": ">=0.14.22",
+    "minecraft": ">=1.20 <1.20.2",
+    "java": ">=17",
+    "fabric-api": "*",
     "architectury": ">=9-",
     "cloth-config2": ">=11-"
+  },
+  "suggests": {
+    "modmenu": "*",
+    "ftbquests": "*",
+    "patchouli": "*"
   }
 }

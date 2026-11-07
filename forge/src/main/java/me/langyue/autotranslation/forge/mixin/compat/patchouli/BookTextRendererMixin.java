@@ -22,9 +22,12 @@ public abstract class BookTextRendererMixin {
     @Final
     private Book book;
 
-    @ModifyArg(method = "<init>(Lvazkii/patchouli/client/book/gui/GuiBook;Lnet/minecraft/network/chat/Component;IIIII)V",
+    // Matched by name only: a descriptor would contain Minecraft's Component, whose runtime name differs between
+    // Forge (Mojang names) and Fabric (intermediary), and remap = false keeps it from being remapped. Only the full
+    // constructor calls parse; the short one delegates to it.
+    @ModifyArg(method = "<init>",
             at = @At(value = "INVOKE",
-                    target = "Lvazkii/patchouli/client/book/text/BookTextParser;parse(Lnet/minecraft/network/chat/Component;)Ljava/util/List;"),
+                    target = "Lvazkii/patchouli/client/book/text/BookTextParser;parse"),
             remap = false, require = 0)
     private Component at$translateBeforeLayout(Component text) {
         return PatchouliSupport.translatePageText(this.book, text);

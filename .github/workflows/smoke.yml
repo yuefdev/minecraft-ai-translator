@@ -1,6 +1,6 @@
 name: Game start-up smoke test
 
-# Boots the real Minecraft 1.20.1 + Forge client headlessly (software OpenGL under Xvfb) and runs the checks in
+# Boots the real Minecraft 1.20.1 client (Forge and Fabric) headlessly (software OpenGL under Xvfb) and runs the checks in
 # me.langyue.autotranslation.smoke.SmokeTest. One run without the optional mods, one with FTB Quests and Patchouli.
 on:
   push:
@@ -31,6 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        loader: [forge, fabric]
         variant: [plain, with-ftbquests-patchouli]
     steps:
       - name: Check out
@@ -54,9 +55,9 @@ jobs:
           ( while sleep 120; do echo "--- progress $(date +%T): $(wc -l < smoke.log) log lines ---"; done ) &
           ticker=$!
           for attempt in 1 2; do
-            timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew :forge:runSmokeClient $extra --no-daemon --console=plain > smoke.log 2>&1
+            timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew :${{ matrix.loader }}:runSmokeClient $extra --no-daemon --console=plain > smoke.log 2>&1
             echo "=== attempt $attempt gradle exit code: $? ==="
-            if [ ! -f forge/build/smoke/result.json ] && grep -qE "DownloadException|Could not GET|Could not resolve|Connection reset|Read timed out" smoke.log; then
+            if [ ! -f ${{ matrix.loader }}/build/smoke/result.json ] && grep -qE "DownloadException|Could not GET|Could not resolve|Connection reset|Read timed out" smoke.log; then
               echo "transient download problem, retrying once"; continue
             fi
             break
@@ -66,19 +67,19 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: smoke-${{ matrix.variant }}
+          name: smoke-${{ matrix.loader }}-${{ matrix.variant }}
           path: |
             smoke.log
-            forge/build/smoke/result.json
-            forge/build/smoke-run/logs/latest.log
-            forge/build/smoke-run/crash-reports
+            ${{ matrix.loader }}/build/smoke/result.json
+            ${{ matrix.loader }}/build/smoke-run/logs/latest.log
+            ${{ matrix.loader }}/build/smoke-run/crash-reports
           if-no-files-found: ignore
       - name: Result summary
         env:
           VARIANT: ${{ matrix.variant }}
         run: |
           echo "##### 1.20.1 SMOKE SUMMARY ($VARIANT)"
-          if [ ! -f forge/build/smoke/result.json ]; then
+          if [ ! -f ${{ matrix.loader }}/build/smoke/result.json ]; then
             echo "NO RESULT FILE - the game did not reach the check phase"
             grep -nE "error:|Exception|ERROR|FATAL|FAILED|What went wrong|Mixin apply|InvalidInjection|Missing or unsupported|crash|Could not" smoke.log | head -n 30 | cut -c1-240
             echo "--- last lines"; tail -n 8 smoke.log | cut -c1-240
@@ -86,7 +87,7 @@ jobs:
           fi
           python3 - <<'PY'
           import json, os, sys
-          r = json.load(open("forge/build/smoke/result.json"))
+          r = json.load(open("${{ matrix.loader }}/build/smoke/result.json"))
           for c in r["checks"]:
               print(("PASS " if c["ok"] else "FAIL ") + c["name"] + (" :: " + c["detail"][:300] if c.get("detail") else ""))
           print("ok =", r["ok"], "| provider requests =", r["providerRequests"], "| ftbquests =", r["ftbquestsLoaded"], "| patchouli =", r["patchouliLoaded"])

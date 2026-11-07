@@ -6,6 +6,10 @@ import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.network.NetworkConstants;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.loading.FMLPaths;
 
 /** Entry point. The translator is a pure client side mod: nothing is started on a dedicated server. */
 @Mod(AutoTranslationMod.MOD_ID)
@@ -17,7 +21,10 @@ public final class AutoTranslationMod {
         ModLoadingContext.get().registerExtensionPoint(IExtensionPoint.DisplayTest.class,
                 () -> new IExtensionPoint.DisplayTest(() -> NetworkConstants.IGNORESERVERONLY, (remote, fromServer) -> true));
         if (FMLEnvironment.dist == Dist.CLIENT) {
-            ClientInit.init();
+            ClientInit.init(FMLPaths.GAMEDIR.get(), modId -> ModList.get().isLoaded(modId),
+                    task -> MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent event) -> {
+                        if (event.phase == TickEvent.Phase.END) task.run();
+                    }));
         }
     }
 }

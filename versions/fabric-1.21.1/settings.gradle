@@ -1,0 +1,11 @@
+pluginManagement {
+    repositories {
+        maven { url "https://maven.fabricmc.net/" }
+        gradlePluginPortal()
+    }
+}
+plugins {
+    // lets Gradle fetch the Java version this Minecraft needs when it is not installed
+    id "org.gradle.toolchains.foojay-resolver-convention" version "1.0.0"
+}
+rootProject.name = "autotranslation-fabric-1.21.1"

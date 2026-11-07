@@ -47,6 +47,21 @@ jobs:
           - module: neoforge-26.1.2
             java: '25'
             gradle: '9.8.1'
+          - module: fabric-1.16.5
+            java: '25'
+            gradle: '9.8.1'
+          - module: fabric-1.18.2
+            java: '25'
+            gradle: '9.8.1'
+          - module: fabric-1.19.2
+            java: '25'
+            gradle: '9.8.1'
+          - module: fabric-1.21.1
+            java: '25'
+            gradle: '9.8.1'
+          - module: fabric-26.1.2
+            java: '25'
+            gradle: '9.8.1'
     steps:
       - name: Check out
         run: git clone --quiet --depth 1 --branch "$GITHUB_REF_NAME" "https://x-access-token:${{ github.token }}@github.com/$GITHUB_REPOSITORY.git" . 
@@ -84,7 +99,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [forge-1.19.2, forge-1.18.2, forge-1.16.5, neoforge-1.21.1, forge-1.12.2, neoforge-26.1.2]
+        module: [forge-1.19.2, forge-1.18.2, forge-1.16.5, neoforge-1.21.1, forge-1.12.2, neoforge-26.1.2, fabric-1.16.5, fabric-1.18.2, fabric-1.19.2, fabric-1.21.1, fabric-26.1.2]
         variant: [plain, with-ftbquests-patchouli]
         include:
           - module: forge-1.19.2
@@ -101,6 +116,22 @@ jobs:
             gradle: '9.8.1'
             task: runClient
           - module: neoforge-26.1.2
+            java: '25'
+            gradle: '9.8.1'
+            no_patchouli: 'true'
+          - module: fabric-1.16.5
+            java: '25'
+            gradle: '9.8.1'
+          - module: fabric-1.18.2
+            java: '25'
+            gradle: '9.8.1'
+          - module: fabric-1.19.2
+            java: '25'
+            gradle: '9.8.1'
+          - module: fabric-1.21.1
+            java: '25'
+            gradle: '9.8.1'
+          - module: fabric-26.1.2
             java: '25'
             gradle: '9.8.1'
             no_patchouli: 'true'

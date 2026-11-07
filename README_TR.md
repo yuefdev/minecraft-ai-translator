@@ -85,17 +85,24 @@ Bunlardan birini bozan çeviri reddedilir.
 | 1.18.2 | Forge 40 | 17 | FTB Quests, Patchouli | `settings.json` |
 | 1.16.5 | Forge 36 | 8+ | FTB Quests, Patchouli | `settings.json` |
 | 1.12.2 | Forge 14.23.5 | 8 | BetterQuesting, FTB Quests, Patchouli | `settings.json` |
+| 1.20.1 | Fabric | 17 | FTB Quests, Patchouli | Oyun içi ekran (Türkçe), Mod Menu ile |
+| 1.21.1 | Fabric | 21 | FTB Quests, Patchouli | `settings.json` |
+| 26.1.2 | Fabric | 25 | FTB Quests | `settings.json` |
+| 1.19.2 | Fabric | 17 | FTB Quests, Patchouli | `settings.json` |
+| 1.18.2 | Fabric | 17 | FTB Quests, Patchouli | `settings.json` |
+| 1.16.5 | Fabric | 8+ | FTB Quests, Patchouli | `settings.json` |
 
 Her sürüm CI'da derlenir ve gerçek bir Minecraft istemcisinde, isteğe bağlı modlarla ve onlarsız açılır.
-Neyin sınandığı ve neyin sınanmadığı: [`docs/VERIFICATION.md`](docs/VERIFICATION.md). Fabric kodu depoda durur ama
-henüz derlenmez ve sınanmaz.
+Neyin sınandığı ve neyin sınanmadığı: [`docs/VERIFICATION.md`](docs/VERIFICATION.md). Fabric sürümleri, aynı Minecraft
+sürümünün Forge/NeoForge koduyla ortak çalışır. 1.12.2 için Fabric sürümü yoktur.
 
 ## Kurulum
 
 1. Sürümüne uygun jar'ı [Releases](https://github.com/yuefdev/minecraft-ai-translator/releases) sayfasından indirip
    `mods/` klasörüne koy.
 2. **Yalnızca 1.20.1:** [Architectury API](https://modrinth.com/mod/architectury-api) ve
-   [Cloth Config](https://modrinth.com/mod/cloth-config) de gerekir. Diğer sürümlerde ek mod gerekmez.
+   [Cloth Config](https://modrinth.com/mod/cloth-config) de gerekir (Fabric'te ayrıca
+   [Fabric API](https://modrinth.com/mod/fabric-api)). Diğer sürümlerde ek mod gerekmez; Fabric sürümleri yalnızca Fabric Loader ister.
 3. Oyunda **Seçenekler → Dil** bölümünden istediğin dili seç, örneğin Deutsch, Español ya da Türkçe.
 
 Hepsi bu. Görev ve kitap modları kuruluysa çevrilir; kurulu değilse oyun normal açılır.

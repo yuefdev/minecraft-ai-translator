@@ -44,6 +44,14 @@ public final class OptionalModsMixinPlugin implements IMixinConfigPlugin {
 
     /** The loading mod list exists this early (before any mod object); reached by reflection. */
     private static boolean isModPresent(String modId) {
+        Object fabric = fabricLoader();
+        if (fabric != null) {
+            try {
+                return (Boolean) fabric.getClass().getMethod("isModLoaded", String.class).invoke(fabric, modId);
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                return false;
+            }
+        }
         Object list = null;
         try {
             Class<?> fmlLoader = Class.forName("net.neoforged.fml.loading.FMLLoader");
@@ -63,6 +71,15 @@ public final class OptionalModsMixinPlugin implements IMixinConfigPlugin {
             return list != null && list.getClass().getMethod("getModFileById", String.class).invoke(list, modId) != null;
         } catch (ReflectiveOperationException | RuntimeException e) {
             return false;
+        }
+    }
+
+    /** Fabric Loader, when the mod runs on Fabric; reached by reflection so that Forge builds do not need it. */
+    private static Object fabricLoader() {
+        try {
+            return Class.forName("net.fabricmc.loader.api.FabricLoader").getMethod("getInstance").invoke(null);
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            return null;
         }
     }
 }

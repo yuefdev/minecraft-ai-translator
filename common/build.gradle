@@ -23,11 +23,7 @@ sourceSets {
 }
 
 architectury {
-    if (rootProject.hasProperty("withFabric")) {
-        common("fabric", "forge")
-    } else {
-        common("forge")
-    }
+    common("fabric", "forge")
 }
 
 publishing {

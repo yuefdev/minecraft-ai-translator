@@ -45,6 +45,7 @@ public final class OptionalModsMixinPlugin implements IMixinConfigPlugin {
 
     /** Mojmap-named development run (CI start-up check); a real game runs on SRG names and needs no repairs. */
     private static boolean isDevelopmentRun() {
+        if (fabricLoader() != null) return false;
         try {
             Class<?> fmlLoader = Class.forName("net.minecraftforge.fml.loading.FMLLoader");
             return !((Boolean) fmlLoader.getMethod("isProduction").invoke(null));
@@ -60,12 +61,29 @@ public final class OptionalModsMixinPlugin implements IMixinConfigPlugin {
 
     /** Forge's loading mod list, which exists this early (before any mod object), reached by reflection. */
     private static boolean isModPresent(String modId) {
+        Object fabric = fabricLoader();
+        if (fabric != null) {
+            try {
+                return (Boolean) fabric.getClass().getMethod("isModLoaded", String.class).invoke(fabric, modId);
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                return false;
+            }
+        }
         try {
             Class<?> fmlLoader = Class.forName("net.minecraftforge.fml.loading.FMLLoader");
             Object list = fmlLoader.getMethod("getLoadingModList").invoke(null);
             return list != null && list.getClass().getMethod("getModFileById", String.class).invoke(list, modId) != null;
         } catch (ReflectiveOperationException | RuntimeException e) {
             return false;
+        }
+    }
+
+    /** Fabric Loader, when the mod runs on Fabric; reached by reflection so that Forge builds do not need it. */
+    private static Object fabricLoader() {
+        try {
+            return Class.forName("net.fabricmc.loader.api.FabricLoader").getMethod("getInstance").invoke(null);
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            return null;
         }
     }
 }

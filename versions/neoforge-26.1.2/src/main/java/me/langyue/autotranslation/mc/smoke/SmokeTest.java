@@ -11,11 +11,10 @@ import me.langyue.autotranslation.engine.Engine;
 import me.langyue.autotranslation.engine.EngineSettings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.TitleScreen;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.common.NeoForge;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.function.Consumer;
 
 /**
  * Automated start-up check, only active with {@code -Dautotranslation.smoketest=true} (never in normal play).
@@ -35,8 +34,8 @@ public final class SmokeTest {
     private SmokeTest() {
     }
 
-    public static void register() {
-        NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post event) -> tick(Minecraft.getInstance()));
+    public static void register(Consumer<Runnable> onClientTick) {
+        onClientTick.accept(() -> tick(Minecraft.getInstance()));
         CoreLog.info("Smoke test armed");
     }
 
