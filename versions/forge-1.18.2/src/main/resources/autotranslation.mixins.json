@@ -13,7 +13,7 @@
     "patchouli.BookCategoryMixin",
     "patchouli.BookEntryMixin",
     "patchouli.BookPageMixin",
-    "patchouli.BookTextRendererMixin"
+    "patchouli.BookTextParserMixin"
   ],
   "injectors": {
     "defaultRequire": 1

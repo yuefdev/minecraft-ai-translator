@@ -20,9 +20,10 @@ public final class SmokeTestPatchouli {
         me.langyue.autotranslation.smoke.SmokeTest.expectMethod("vazkii.patchouli.client.book.BookEntry", "translateName", "patchouli: BookEntry.getName hooked");
         me.langyue.autotranslation.smoke.SmokeTest.expectMethod("vazkii.patchouli.client.book.BookCategory", "translateName", "patchouli: BookCategory.getName hooked");
         me.langyue.autotranslation.smoke.SmokeTest.expectMethod("vazkii.patchouli.client.book.BookPage", "translateLabel", "patchouli: BookPage.i18n hooked");
-        me.langyue.autotranslation.smoke.SmokeTest.expectMethod("vazkii.patchouli.client.book.gui.BookTextRenderer", "translateBeforeLayout", "patchouli: BookTextRenderer hooked before layout");
+        me.langyue.autotranslation.smoke.SmokeTest.expectMethod("vazkii.patchouli.client.book.text.BookTextParser", "translateBeforeLayout", "patchouli: BookTextParser.parse hooked before layout");
         try {
             var book = allocateBook();
+            checkParserHook(book);
             var page = new vazkii.patchouli.client.book.page.PageText();
             page.book = book;
             String before = page.i18n("Iron Age");
@@ -61,5 +62,32 @@ public final class SmokeTestPatchouli {
         return book;
     }
 
-
+    /**
+     * The page text hook must actually run, not just be merged into the class: a selector that matches nothing still
+     * merges the handler. Runs before anything else in this check translates page text, so the hook can only have been
+     * seen if Patchouli's own parse call went through the mixin.
+     */
+    private static void checkParserHook(vazkii.patchouli.common.book.Book book) {
+        try {
+            Field unsafeField = Class.forName("sun.misc.Unsafe").getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
+            Object unsafe = unsafeField.get(null);
+            Method allocate = unsafe.getClass().getMethod("allocateInstance", Class.class);
+            var parser = (vazkii.patchouli.client.book.text.BookTextParser) allocate.invoke(unsafe,
+                    vazkii.patchouli.client.book.text.BookTextParser.class);
+            Field field = vazkii.patchouli.client.book.text.BookTextParser.class.getDeclaredField("book");
+            field.setAccessible(true);
+            field.set(parser, book);
+            boolean before = TranslationRuntime.hooksSeen().contains("patchouli.page-text");
+            try {
+                parser.parse(Component.literal("Smoke parser text"));
+            } catch (Throwable expected) {
+                // the parser is only half set up; only the hook at the start of parse matters here
+            }
+            boolean after = TranslationRuntime.hooksSeen().contains("patchouli.page-text");
+            me.langyue.autotranslation.smoke.SmokeTest.check("patchouli: page text hook runs when Patchouli parses a page", !before && after, "before=" + before + " after=" + after);
+        } catch (Throwable t) {
+            me.langyue.autotranslation.smoke.SmokeTest.check("patchouli: page text hook runs when Patchouli parses a page", false, t.toString());
+        }
+    }
 }

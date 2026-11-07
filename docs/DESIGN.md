@@ -90,9 +90,11 @@ Entegrasyon yalnızca bu üç gösterim yöntemine, ayrıca bölüm listesindeki
 
 ## Patchouli entegrasyonu (1.20.1-8x)
 
-* Sayfa/açılış/kategori metni `BookTextRenderer` kurucusunda, işaretleme ayrıştırılıp yerleşim hesaplanmadan **önce**
-  çevrilir (`@ModifyArg` ile `BookTextParser.parse` argümanı). Kaydırma, sayfalama ve ölçekleme Türkçe metne göre
-  hesaplanır.
+* Sayfa/açılış/kategori metni, işaretleme ayrıştırılıp yerleşim hesaplanmadan **önce** çevrilir (`BookTextParser.parse`
+  başında `@ModifyVariable` ile). Kaydırma, sayfalama ve ölçekleme Türkçe metne göre hesaplanır. Kanca bilerek
+  `BookTextRenderer` kurucusunda değil: gerçek bir Fabric kurulumunda kurucu seçicisi ya hiçbir şeyle eşleşmiyor ya da
+  mixin yeniden eşleyicisi tarafından yanlış kurucuya daraltılıyordu ve kanca sessizce devre dışı kalıyordu. Smoke testi
+  artık kancanın gerçekten çalıştığını (`parse` çağrılınca) denetler.
 * Giriş ve kategori adları ve sayfa başlıkları (`BookPage.i18n/i18nText`) üretildikleri yerde çevrilir.
 * Çeviri sonradan gelirse açık kitap ekranı `resize` ile yeniden kurulur.
 * Bilinen sınır: `$(t:…)` ipucu metinleri komutun parçası sayıldığı için çevrilmez.

@@ -77,8 +77,16 @@ zaten vardır).
 * **Gerçek görev tamamlama** (eşya teslim etme, ödül alma) CI'da oynanmadı; görev verisinin değişmediği ölçüldü.
 * **Fabric** sürümleri yeni eklendi; tablodaki ⏳ satırlar CI sonucu gelene kadar doğrulanmış sayılmaz. Altı Fabric
   sürümünün `runSmokeClient -PsmokeMods` testi 2026-11-07'de Windows'ta yerelde geçti (FTB Quests ve, 26.1.2 dışında,
-  Patchouli yüklü; tüm kontroller ✅). Fabric için gerçek kurulum (yayın jar'ı) testi yapılmadı. 1.12.2 için Fabric
-  sürümü yoktur.
+  Patchouli yüklü; tüm kontroller ✅). 1.12.2 için Fabric sürümü yoktur.
+* **1.20.1 Fabric gerçek kurulum, 2026-11-08:** ✅ Yayın jar'ı; Fabric Loader 0.17.3, Fabric API 0.92.12, Architectury,
+  Cloth Config, Mod Menu 7.2.2, FTB Quests 2001.4.22 ve Patchouli 1.20.1-85 (hepsi yayımlanmış jar'lar), oyun dili Türkçe,
+  anahtarsız Google. Bir test yardımcısı dünya kurdu, görev kitabını ve bir Patchouli kitabını açıp tıkladı, ekran görüntüsü
+  aldı. Görev başlığı/alt başlığı/açıklaması, bölüm adı, kitap açılış metni, kategori adı ve açıklaması, giriş adı, sayfa
+  başlığı ve sayfa metni Türkçe göründü; `$(item)…$()` ve `$(br2)` işaretlemesi korundu. Bu test, Patchouli sayfa metni
+  kancasının gerçek kurulumda çalışmadığını ortaya çıkardı (geliştirme ortamında çalışıyordu); düzeltildi.
+  Bilinen durumlar: bir ekran ilk açıldığında metin İngilizce görünür, çeviri gelince ekran yeniden açıldığında Türkçe
+  olur. Anahtarsız Google kısa başlıklarda anlamı kaçırabiliyor: "Smelt Your First Iron" → "İlk Ütünüzü Koklayın".
+  Diğer Fabric sürümleri gerçek kurulumda denenmedi.
 * **Büyük mod paketleri** (yüzlerce mod) ve binlerce metinle performans sınanmadı.
 * 1.16.5'te geliştirme ortamı (Architectury Loom) Forge'un yeniden adlandırdığı iki `Transformation` yöntemini
   bulamıyordu; yalnızca geliştirme çalıştırmasında devreye giren küçük bir düzeltme eklendi

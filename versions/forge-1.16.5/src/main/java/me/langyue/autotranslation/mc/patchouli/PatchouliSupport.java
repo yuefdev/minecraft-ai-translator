@@ -17,7 +17,7 @@ import vazkii.patchouli.common.book.Book;
  * Translation of Patchouli books at the points where text is turned into something drawable.
  *
  * <ul>
- *   <li>Page/landing/category text goes through {@code BookTextRenderer}; it is translated <em>before</em> the
+ *   <li>Page/landing/category text goes through {@code BookTextParser.parse}; it is translated <em>before</em> the
  *       markup is parsed and laid out, so wrapping and page fitting are computed for the Turkish text.</li>
  *   <li>Entry and category names and page titles are translated where they are produced.</li>
  * </ul>
@@ -28,7 +28,7 @@ public final class PatchouliSupport {
     private PatchouliSupport() {
     }
 
-    /** Page text for {@code BookTextRenderer}; returns the component unchanged when nothing applies. */
+    /** Page text for {@code BookTextParser.parse}; returns the component unchanged when nothing applies. */
     public static Component translatePageText(Book book, Component text) {
         Engine engine = Engine.get();
         if (engine == null || !engine.booksEnabled() || text == null) return text;
