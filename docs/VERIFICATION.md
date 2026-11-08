@@ -49,12 +49,12 @@ zaten vardır).
 | 1.12.2 Forge | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 1.21.1 NeoForge | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | 26.1.2 NeoForge | ✅ | ✅ | ✅ | ✅ | ✅ | — (Patchouli bu sürüme çıkmadı) | — |
-| 1.20.1 Fabric | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — |
-| 1.21.1 Fabric | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — |
-| 26.1.2 Fabric | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — (Patchouli bu sürüme çıkmadı) | — |
-| 1.19.2 Fabric | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — |
-| 1.18.2 Fabric | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — |
-| 1.16.5 Fabric | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 1.20.1 Fabric | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| 1.21.1 Fabric | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| 26.1.2 Fabric | ✅ | ✅ | ✅ | ✅ | ✅ | — (Patchouli bu sürüme çıkmadı) | — |
+| 1.19.2 Fabric | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| 1.18.2 Fabric | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| 1.16.5 Fabric | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 
 ## Gerçek kurulum ve canlı hizmet sonuçları
 
@@ -75,7 +75,7 @@ zaten vardır).
 * **Gerçek bir yapay zekâ modeliyle (Gemini vb.) çeviri kalitesi** ölçülmedi: CI'da anahtar yok. Yalnızca anahtarsız
   Google Çeviri canlı denendi (yukarıda).
 * **Gerçek görev tamamlama** (eşya teslim etme, ödül alma) CI'da oynanmadı; görev verisinin değişmediği ölçüldü.
-* **Fabric** sürümleri yeni eklendi; tablodaki ⏳ satırlar CI sonucu gelene kadar doğrulanmış sayılmaz. Altı Fabric
+* **Fabric** sürümleri: tablodaki satırlar 2026-11-08 CI çalıştırmasında (33 iş) geçti. Altı Fabric
   sürümünün `runSmokeClient -PsmokeMods` testi 2026-11-07'de Windows'ta yerelde geçti (FTB Quests ve, 26.1.2 dışında,
   Patchouli yüklü; tüm kontroller ✅). İlk CI çalıştırması "yalnız bu mod" testinde Fabric API olmadan modun dil
   dosyalarının yüklenmediğini gösterdi; Fabric API artık zorunlu bağımlılık. 1.12.2 için Fabric sürümü yoktur.
