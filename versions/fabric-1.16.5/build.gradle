@@ -114,7 +114,9 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 processResources {
-    def props = [version: mod_version, minecraft_range: "~1.16.4", java_version: "8"]
+    // Fabric API's mod id was "fabric" before it became "fabric-api" (the 1.16.5 build is older than the rename)
+    def props = [version: mod_version, minecraft_range: "~1.16.4", java_version: "8",
+                 fabric_api_id: "fabric"]
     inputs.properties props
     filesMatching("fabric.mod.json") {
         expand props
