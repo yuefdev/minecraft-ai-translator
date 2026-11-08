@@ -104,7 +104,7 @@ build of the same Minecraft version. There is no Fabric build for 1.12.2.
    page and put it in your `mods/` folder.
 2. **1.20.1 only:** also install [Architectury API](https://modrinth.com/mod/architectury-api) and
    [Cloth Config](https://modrinth.com/mod/cloth-config) (on Fabric also [Fabric API](https://modrinth.com/mod/fabric-api)).
-   Other versions need no extra mods; their Fabric builds need only Fabric Loader.
+   Other versions need no extra mods on Forge/NeoForge; on Fabric they need [Fabric API](https://modrinth.com/mod/fabric-api).
 3. In the game, set **Options → Language** to the language you want, for example Deutsch, Español or Türkçe.
 
 That is all. Quests, books and the optional mods are picked up if they are installed. If not, the game starts

@@ -6,7 +6,7 @@ import net.fabricmc.loader.api.FabricLoader;
 
 /**
  * Fabric entry point. Shared by every Fabric module under versions/; the rest of the mod is the same code as the
- * Forge/NeoForge module of that Minecraft version. Needs only Fabric Loader (no Fabric API).
+ * Forge/NeoForge module of that Minecraft version. Needs Fabric API at run time (its resource loader loads the mod's language files); nothing is compiled against it.
  */
 public final class AutoTranslationFabric implements ClientModInitializer {
     @Override

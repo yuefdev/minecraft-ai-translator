@@ -1,7 +1,7 @@
 # Unreleased (Fabric support)
 
 - Fabric builds for 1.16.5, 1.18.2, 1.19.2, 1.20.1, 1.21.1 and 26.1.2. The code is shared with the Forge/NeoForge build of the same version, including the FTB Quests and Patchouli integrations (FTB Quests only on 26.1.2).
-- Fabric builds other than 1.20.1 need only Fabric Loader (no Fabric API). 1.20.1 Fabric needs Fabric API, Architectury API and Cloth Config; its settings screen opens from Mod Menu.
+- Fabric builds other than 1.20.1 need Fabric API (Fabric Loader alone does not load the mod's language files). 1.20.1 Fabric needs Fabric API, Architectury API and Cloth Config; its settings screen opens from Mod Menu.
 - 1.20.1 Fabric: the Mod Menu build dependency moved from 8.0.0 (made for 1.20.2) to 7.2.2, which matches 1.20.1 (with 8.0.0 the development run did not start).
 - Patchouli: the page text hook moved from the `BookTextRenderer` constructor to `BookTextParser.parse`. In a real Fabric install the old hook silently did nothing, so landing, category and page text stayed in English (only names were translated). The smoke test now checks that the hook actually runs.
 - 1.20.1 Fabric: the screen icon hook uses `@ModifyArg` instead of `@ModifyArgs`. `@ModifyArgs` broke the local variable analysis of Fabric API's injector in the same method and logged a mixin error.

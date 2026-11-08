@@ -3,7 +3,7 @@ plugins {
 }
 
 // Fabric build of Minecraft 26.1.2. The mod code is the code of ../neoforge-26.1.2 (everything except its Forge/NeoForge
-// entry point) plus the small Fabric entry point in ../fabric-common; only Fabric Loader is required at run time.
+// entry point) plus the small Fabric entry point in ../fabric-common; Fabric Loader and Fabric API are required at run time.
 def shared = "../neoforge-26.1.2"
 
 base {
@@ -72,6 +72,10 @@ dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
 
+    // Fabric API is required at run time: Fabric Loader alone does not load the mod's own assets (language files,
+    // textures); its resource loader does. Nothing is compiled against it.
+    localRuntime("net.fabricmc.fabric-api:fabric-api:${fabric_api_version}") { exclude group: "net.fabricmc", module: "fabric-loader" }
+
     // Optional integrations are compile-only: the game starts without them.
     compileOnly("dev.ftb.mods:ftb-library-fabric:${ftb_library_version}") { transitive = false }
     compileOnly("dev.ftb.mods:ftb-teams-fabric:${ftb_teams_version}") { transitive = false }
@@ -81,8 +85,7 @@ dependencies {
 // -PsmokeMods puts the optional integrations on the runtime classpath of runSmokeClient.
 if (project.hasProperty("smokeMods")) {
     dependencies {
-        // FTB Quests needs Fabric API (without the older Fabric Loader it depends on) when it runs
-        localRuntime("net.fabricmc.fabric-api:fabric-api:${fabric_api_version}") { exclude group: "net.fabricmc", module: "fabric-loader" }
+        // FTB Quests needs Fabric API (already on the runtime classpath) when it runs
         localRuntime("dev.ftb.mods:ftb-library-fabric:${ftb_library_version}") { transitive = false }
         localRuntime("dev.ftb.mods:ftb-teams-fabric:${ftb_teams_version}") { transitive = false }
         localRuntime("dev.ftb.mods:ftb-quests-fabric:${ftb_quests_version}") { transitive = false }

@@ -102,7 +102,7 @@ sürümünün Forge/NeoForge koduyla ortak çalışır. 1.12.2 için Fabric sür
    `mods/` klasörüne koy.
 2. **Yalnızca 1.20.1:** [Architectury API](https://modrinth.com/mod/architectury-api) ve
    [Cloth Config](https://modrinth.com/mod/cloth-config) de gerekir (Fabric'te ayrıca
-   [Fabric API](https://modrinth.com/mod/fabric-api)). Diğer sürümlerde ek mod gerekmez; Fabric sürümleri yalnızca Fabric Loader ister.
+   [Fabric API](https://modrinth.com/mod/fabric-api)). Diğer sürümlerde Forge/NeoForge'da ek mod gerekmez; Fabric'te [Fabric API](https://modrinth.com/mod/fabric-api) gerekir.
 3. Oyunda **Seçenekler → Dil** bölümünden istediğin dili seç, örneğin Deutsch, Español ya da Türkçe.
 
 Hepsi bu. Görev ve kitap modları kuruluysa çevrilir; kurulu değilse oyun normal açılır.

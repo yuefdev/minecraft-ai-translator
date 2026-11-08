@@ -3,7 +3,7 @@ plugins {
 }
 
 // Fabric build of Minecraft 1.16.5. The mod code is the code of ../forge-1.16.5 (everything except its Forge/NeoForge
-// entry point) plus the small Fabric entry point in ../fabric-common; only Fabric Loader is required at run time.
+// entry point) plus the small Fabric entry point in ../fabric-common; Fabric Loader and Fabric API are required at run time.
 def shared = "../forge-1.16.5"
 
 base {
@@ -79,6 +79,10 @@ dependencies {
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
 
+    // Fabric API is required at run time: Fabric Loader alone does not load the mod's own assets (language files,
+    // textures); its resource loader does. Nothing is compiled against it.
+    modLocalRuntime("net.fabricmc.fabric-api:fabric-api:${fabric_api_version}") { exclude group: "net.fabricmc", module: "fabric-loader" }
+
     // Optional integrations are compile-only: the game starts without them.
     modCompileOnly("dev.ftb.mods:ftb-library-fabric:${ftb_library_version}") { transitive = false }
     modCompileOnly("dev.ftb.mods:ftb-teams-fabric:${ftb_teams_version}") { transitive = false }
@@ -89,9 +93,8 @@ dependencies {
 // -PsmokeMods puts the optional integrations on the runtime classpath of runSmokeClient.
 if (project.hasProperty("smokeMods")) {
     dependencies {
-        // FTB Quests needs Fabric API (without the older Fabric Loader it depends on) and Architectury API when it runs
+        // FTB Quests needs Fabric API (already on the runtime classpath) and Architectury API when it runs
         // (Fabric API is compile-only as well so that Loom can resolve the methods these mods inherit from it when it remaps them)
-        modLocalRuntime("net.fabricmc.fabric-api:fabric-api:${fabric_api_version}") { exclude group: "net.fabricmc", module: "fabric-loader" }
         modCompileOnly("net.fabricmc.fabric-api:fabric-api:${fabric_api_version}") { exclude group: "net.fabricmc", module: "fabric-loader" }
         modLocalRuntime("me.shedaniel:architectury-fabric:1.32.68") { transitive = false }
         modLocalRuntime("dev.ftb.mods:ftb-library-fabric:${ftb_library_version}") { transitive = false }

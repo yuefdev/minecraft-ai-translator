@@ -77,7 +77,8 @@ zaten vardır).
 * **Gerçek görev tamamlama** (eşya teslim etme, ödül alma) CI'da oynanmadı; görev verisinin değişmediği ölçüldü.
 * **Fabric** sürümleri yeni eklendi; tablodaki ⏳ satırlar CI sonucu gelene kadar doğrulanmış sayılmaz. Altı Fabric
   sürümünün `runSmokeClient -PsmokeMods` testi 2026-11-07'de Windows'ta yerelde geçti (FTB Quests ve, 26.1.2 dışında,
-  Patchouli yüklü; tüm kontroller ✅). 1.12.2 için Fabric sürümü yoktur.
+  Patchouli yüklü; tüm kontroller ✅). İlk CI çalıştırması "yalnız bu mod" testinde Fabric API olmadan modun dil
+  dosyalarının yüklenmediğini gösterdi; Fabric API artık zorunlu bağımlılık. 1.12.2 için Fabric sürümü yoktur.
 * **1.20.1 Fabric gerçek kurulum, 2026-11-08:** ✅ Yayın jar'ı; Fabric Loader 0.17.3, Fabric API 0.92.12, Architectury,
   Cloth Config, Mod Menu 7.2.2, FTB Quests 2001.4.22 ve Patchouli 1.20.1-85 (hepsi yayımlanmış jar'lar), oyun dili Türkçe,
   anahtarsız Google. Bir test yardımcısı dünya kurdu, görev kitabını ve bir Patchouli kitabını açıp tıkladı, ekran görüntüsü
