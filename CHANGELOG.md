@@ -1,4 +1,4 @@
-# Yayınlanmamış (Fabric desteği)
+# V1.5.0 (Fabric desteği)
 
 - Fabric sürümleri: 1.16.5, 1.18.2, 1.19.2, 1.20.1, 1.21.1 ve 26.1.2. Kod aynı sürümün Forge/NeoForge koduyla ortaktır; FTB Quests ve Patchouli (26.1.2'de yalnızca FTB Quests) entegrasyonları dahildir.
 - 1.20.1 dışındaki Fabric sürümleri Fabric API ister (Fabric Loader tek başına modun dil dosyalarını yüklemez). 1.20.1 Fabric; Fabric API, Architectury API ve Cloth Config ister, ayar ekranı Mod Menu'den açılır.

@@ -1,4 +1,4 @@
-# Unreleased (Fabric support)
+# V1.5.0 (Fabric support)
 
 - Fabric builds for 1.16.5, 1.18.2, 1.19.2, 1.20.1, 1.21.1 and 26.1.2. The code is shared with the Forge/NeoForge build of the same version, including the FTB Quests and Patchouli integrations (FTB Quests only on 26.1.2).
 - Fabric builds other than 1.20.1 need Fabric API (Fabric Loader alone does not load the mod's language files). 1.20.1 Fabric needs Fabric API, Architectury API and Cloth Config; its settings screen opens from Mod Menu.
