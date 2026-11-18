@@ -32,6 +32,8 @@ import java.util.List;
  * editor uses ({@code getRawTitle}, {@code getRawDescription}, ...) are deliberately not hooked.
  */
 public final class FtbQuestsSupport {
+    private static volatile boolean loggedEditPause;
+
     private FtbQuestsSupport() {
     }
 
@@ -40,7 +42,16 @@ public final class FtbQuestsSupport {
         if (!TranslationRuntime.questsEnabled()) return false;
         if (AutoTranslation.CONFIG.turkish.pauseWhileEditingQuests) {
             try {
-                if (ClientQuestFile.exists() && ClientQuestFile.INSTANCE.canEdit()) return false;
+                if (ClientQuestFile.exists()) {
+                    if (ClientQuestFile.INSTANCE.canEdit()) {
+                        if (!loggedEditPause) {
+                            loggedEditPause = true;
+                            me.langyue.autotranslation.core.util.CoreLog.info("FTB Quests edit mode (/ftbquests editing_mode) is active; quest translation is paused while editing (set pauseWhileEditingQuests=false in settings.json to translate anyway)");
+                        }
+                        return false;
+                    }
+                    loggedEditPause = false;
+                }
             } catch (Throwable ignored) {
                 // never let a context check break the quest screen
             }

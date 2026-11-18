@@ -9,7 +9,7 @@ sınanmadığını ayırır. Sınanmayan hiçbir şey "doğrulanmış" olarak li
    kodları, URL'ler, Patchouli `$(...)` komutları, FTB `{@pagebreak}`), metin analizi, sözlük, önbellek, düzeltmeler,
    sağlayıcı yanıt doğrulama, hız sınırı/yeniden deneme, API anahtarının dosyalara/loglara sızmaması, ücretsiz hizmet
    seçimi (anahtardan), anahtarsız Google istek biçimi, kota/yedek model, kısa metinlerin tek istekte birleşmesi. Ağ
-   yerine yerel **sahte sunucular** kullanılır. 140 test; CI'da `./gradlew -p core test`.
+   yerine yerel **sahte sunucular** kullanılır. 171 test; CI'da `./gradlew -p core test`.
 2. **Derleme** – her sürüm modülü kendi Gradle/Java sürümüyle CI'da derlenir (1.20.1 için `./gradlew :forge:build`,
    Windows karşılığı `gradlew.bat :forge:build`).
 3. **Oyun başlatma testi (duman testi)** – CI'da **gerçek Minecraft istemcisi** başlatılır (Xvfb sanal ekran + Mesa
@@ -97,5 +97,5 @@ zaten vardır).
 
 ## Jar dosyaları
 
-* 1.20.1: `forge/build/libs/AutoTranslation-1.5.0+mc1.20.1-forge.jar` (CI çıktısı `forge-libs`).
+* 1.20.1: `forge/build/libs/AutoTranslation-1.6.0+mc1.20.1-forge.jar` (CI çıktısı `forge-libs`).
 * Diğer sürümler: `Other Minecraft versions` iş akışının `jar-<modül>` çıktıları.

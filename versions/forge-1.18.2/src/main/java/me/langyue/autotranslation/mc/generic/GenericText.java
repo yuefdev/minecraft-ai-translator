@@ -24,7 +24,7 @@ public final class GenericText {
     public static String translate(String text) {
         if (text == null || text.length() < 2) return text;
         Engine engine = Engine.get();
-        if (engine == null || !engine.genericEnabled() || !GenericGate.screenAllowed()) return text;
+        if (engine == null || !engine.displayGenericEnabled() || !GenericGate.screenAllowed()) return text;
         long generation = engine.generation();
         if (generation != cacheGeneration || CACHE.size() > 60000) {
             CACHE.clear();

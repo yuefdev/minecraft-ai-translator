@@ -627,4 +627,109 @@ class ServiceTest {
         assertEquals(1, provider.calls.get(), "authentication errors are not retried");
         assertTrue(service.stats().lastError().contains("401"));
     }
+
+    // ------------------------------------------------------------------------------------------ priority lanes
+
+    @Test
+    void highPriorityQuestsJumpAheadOfQueuedLanguageFileStrings() throws Exception {
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch started = new CountDownLatch(1);
+        FakeProvider provider = new FakeProvider((req, n) -> {
+            if (n == 1) {
+                started.countDown();
+                try {
+                    release.await(10, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    throw new ProviderException(ProviderException.Kind.INTERRUPTED, "interrupted");
+                }
+            }
+            List<String> out = new ArrayList<>();
+            for (String s : req.segments()) out.add("TR| " + s);
+            return out;
+        });
+        service = builder(dir, provider).workers(1).coalesceShortTexts(false).build();
+        assertEquals(State.PENDING, service.lookup(plain("q:block", "Blocker quest text"), null).state());
+        assertTrue(started.await(5, TimeUnit.SECONDS));
+
+        for (int i = 0; i < 3; i++) {
+            service.lookup(new Types.TextRequest(
+                    List.of(Types.Segment.plain("Low background item " + i)),
+                    new Types.Content("game", "language file", "lang:low." + i, ""),
+                    MaskProfile.PLAIN, "pre:low." + i), null);
+        }
+        for (int i = 0; i < 2; i++) {
+            service.lookup(new Types.TextRequest(
+                    List.of(Types.Segment.plain("Normal label text " + i)),
+                    new Types.Content("game", "language file", "lang:norm." + i, ""),
+                    MaskProfile.PLAIN, "lang:norm." + i), null);
+        }
+        CompletableFuture<Result> highDone = new CompletableFuture<>();
+        assertEquals(State.PENDING, service.lookup(plain("ftbquests:quest:urgent", "Defeat the ender dragon"), highDone::complete).state());
+
+        release.countDown();
+        assertEquals("TR| Defeat the ender dragon", text(highDone.get(10, TimeUnit.SECONDS), 0));
+        assertTrue(provider.requests.size() >= 2);
+        assertEquals("Defeat the ender dragon", provider.requests.get(1).segments().get(0),
+                "HIGH priority quest must be sent before queued NORMAL/LOW language entries");
+    }
+
+    @Test
+    void highPriorityQuestEvictsLowPriorityJobWhenQueueIsFull() throws Exception {
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch started = new CountDownLatch(1);
+        FakeProvider provider = new FakeProvider((req, n) -> {
+            if (n == 1) {
+                started.countDown();
+                try {
+                    release.await(10, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    throw new ProviderException(ProviderException.Kind.INTERRUPTED, "interrupted");
+                }
+            }
+            List<String> out = new ArrayList<>();
+            for (String s : req.segments()) out.add("TR| " + s);
+            return out;
+        });
+        service = builder(dir, provider).settings(with(settings(), 2, 600_000, 20_000, 2, 5)).workers(1).build();
+        assertEquals(State.PENDING, service.lookup(plain("q:0", "Blocker quest text"), null).state());
+        assertTrue(started.await(5, TimeUnit.SECONDS));
+
+        CompletableFuture<Result> evictedFuture = new CompletableFuture<>();
+        Types.TextRequest lowOne = new Types.TextRequest(
+                List.of(Types.Segment.plain("Low item one")),
+                new Types.Content("game", "language file", "lang:low.1", ""),
+                MaskProfile.PLAIN, "pre:low.1");
+        Types.TextRequest lowTwo = new Types.TextRequest(
+                List.of(Types.Segment.plain("Low item two")),
+                new Types.Content("game", "language file", "lang:low.2", ""),
+                MaskProfile.PLAIN, "pre:low.2");
+        assertEquals(State.PENDING, service.lookup(lowOne, evictedFuture::complete).state());
+        assertEquals(State.PENDING, service.lookup(lowTwo, null).state());
+        assertEquals(2, service.stats().queued());
+
+        CompletableFuture<Result> urgentFuture = new CompletableFuture<>();
+        Result urgent = service.lookup(plain("ftbquests:quest:urgent", "Urgent quest text"), urgentFuture::complete);
+        assertEquals(State.PENDING, urgent.state(), "HIGH request must evict LOW instead of failing");
+
+        Result evictedResult = evictedFuture.get(5, TimeUnit.SECONDS);
+        assertEquals(State.FAILED, evictedResult.state());
+        assertTrue(evictedResult.detail().contains("evicted"));
+
+        release.countDown();
+        assertEquals("TR| Urgent quest text", text(urgentFuture.get(10, TimeUnit.SECONDS), 0));
+        // Evicted LOW item must not be put on failure cooldown
+        assertEquals("TR| Low item one", text(lookupAndWait(service, lowOne), 0));
+    }
+
+    @Test
+    void sourceLanguageTargetNeverCallsProvider() {
+        FakeProvider provider = FakeProvider.prefixing();
+        service = builder(dir, provider)
+                .settings(with(settings(), 64, 600_000, 2_000, 2, 5).withTarget(LanguageProfile.of("en_us")))
+                .build();
+        Result r = service.lookup(plain("ftbquests:quest:1", "Collect iron ingots"), null);
+        assertEquals(State.READY, r.state());
+        assertNull(r.segments().get(0).translation());
+        assertEquals(0, provider.calls.get());
+    }
 }

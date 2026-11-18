@@ -104,6 +104,9 @@ public class Config implements ConfigData {
         @Comment("Bekleyen çeviri kuyruğunun üst sınırı (değişiklik için yeniden başlatma gerekir)")
         public int queueSize = 512;
 
+        @Comment("Paralel çeviri iş parçacığı sayısı (1-8)")
+        public int workerThreads = 4;
+
         @Comment("Kalıcı önbellekteki en çok kayıt sayısı")
         public int cacheMaxEntries = 50000;
 

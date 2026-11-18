@@ -74,4 +74,23 @@ class TextAnalyzerTest {
         assertEquals("zh-CN", LanguageProfile.of("zh_cn").providerCode());
         assertEquals("de", LanguageProfile.of("de_de").providerCode());
     }
+
+    @Test
+    void nonTurkishTargetsSkipAlreadyLocalizedTextWithoutBlockingEnglish() {
+        LanguageProfile fr = LanguageProfile.of("fr_fr");
+        assertEquals(Decision.SKIP_ALREADY_TARGET, analyzer.analyze("Récupérer les lingots dans le coffre", fr));
+        assertEquals(Decision.TRANSLATE, analyzer.analyze("Collect iron ingots", fr));
+
+        LanguageProfile de = LanguageProfile.of("de_de");
+        assertEquals(Decision.SKIP_ALREADY_TARGET, analyzer.analyze("Sammle die Eisenbarren in der Truhe", de));
+        assertEquals(Decision.TRANSLATE, analyzer.analyze("Open the door", de));
+
+        LanguageProfile ru = LanguageProfile.of("ru_ru");
+        assertEquals(Decision.SKIP_ALREADY_TARGET, analyzer.analyze("Соберите железные слитки", ru));
+        assertEquals(Decision.TRANSLATE, analyzer.analyze("Collect iron ingots", ru));
+
+        LanguageProfile zh = LanguageProfile.of("zh_cn");
+        assertEquals(Decision.SKIP_ALREADY_TARGET, analyzer.analyze("收集铁锭", zh));
+        assertEquals(Decision.TRANSLATE, analyzer.analyze("Collect iron ingots", zh));
+    }
 }

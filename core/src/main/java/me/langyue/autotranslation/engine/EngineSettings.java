@@ -35,6 +35,9 @@ public class EngineSettings {
     /** The pack site of this release. */
     public static final String DEFAULT_PACK_URL = "https://autotranslation-packs.ergyusuf34.workers.dev";
 
+    /** Legacy default target hint (Turkish characters). Ignored automatically for non-Turkish game languages. */
+    public static final String DEFAULT_TURKISH_HINT = "[çğıöşüÇĞİÖŞÜ]";
+
     /**
      * Translation service: "auto" (default: the key decides - Gemini "AIza...", Groq "gsk_...", OpenRouter
      * "sk-or-..."; without a key the free, keyless Google machine translation), "google-free", "gemini", "groq",
@@ -51,11 +54,12 @@ public class EngineSettings {
     public int timeoutSeconds = 45;
     public int maxRetries = 2;
     public int queueSize = 512;
+    public int workerThreads = 4;
     public int cacheMaxEntries = 50000;
     public double temperature = 0.2;
 
     /** Extra evidence that a text is already in the target language (regular expression; see TextAnalyzer). */
-    public String targetLanguageHint = "[çğıöşüÇĞİÖŞÜ]";
+    public String targetLanguageHint = DEFAULT_TURKISH_HINT;
 
     /** Words that must never be translated (case-insensitive, single words). */
     public java.util.List<String> wordBlacklist = new java.util.ArrayList<String>();

@@ -49,6 +49,8 @@ public class ClientLanguageMixin {
     /** Constant-time membership test for keys without a translation (the multimap's containsValue is linear). */
     @Unique
     private static volatile java.util.Set<String> autoTranslation$unknownKeys = java.util.Set.of();
+    @Unique
+    private static final java.util.Set<String> autoTranslation$seenUnknown = new java.util.HashSet<>();
 
     @Unique
     private static void autoTranslation$capture(String lang, Map<String, String> entries) {
@@ -70,6 +72,7 @@ public class ClientLanguageMixin {
             return;
         }
         ResourceManager.UNKNOWN_KEYS.clear();
+        autoTranslation$seenUnknown.clear();
         autoTranslation$englishCapture.clear();
         autoTranslation$targetCapture.clear();
         autoTranslation$unknownKeys = java.util.Set.of();
@@ -106,7 +109,8 @@ public class ClientLanguageMixin {
             // 默认语言
             temp.forEach((k, v) -> {
                 map.put(k, v);
-                if (!ResourceManager.UNKNOWN_KEYS.containsValue(k) && TranslatorHelper.shouldTranslate(k, v)) {
+                if (!autoTranslation$seenUnknown.contains(k) && TranslatorHelper.shouldTranslate(k, v)) {
+                    autoTranslation$seenUnknown.add(k);
                     ResourceManager.UNKNOWN_KEYS.put(namespace, k);
                 }
             });
@@ -116,9 +120,11 @@ public class ClientLanguageMixin {
                 if (AutoTranslation.CONFIG.mode == Config.FilterMode.CORRECTION && v.equals(map.get(k))) {
                     if (!TranslatorHelper.shouldTranslate(k, v)) {
                         ResourceManager.UNKNOWN_KEYS.remove(namespace, k);
+                        autoTranslation$seenUnknown.remove(k);
                     }
                 } else {
                     ResourceManager.UNKNOWN_KEYS.remove(namespace, k);
+                    autoTranslation$seenUnknown.remove(k);
                 }
                 map.put(k, v);
             });
@@ -148,6 +154,7 @@ public class ClientLanguageMixin {
         }
         ResourceManager.initResource();
         autoTranslation$unknownKeys = new java.util.HashSet<>(ResourceManager.UNKNOWN_KEYS.values());
+        autoTranslation$seenUnknown.clear();
         autoTranslation$ready = true;
     }
 
@@ -157,6 +164,8 @@ public class ClientLanguageMixin {
     @Inject(method = "getOrDefault", at = @At(value = "RETURN"), cancellable = true)
     private void getOrDefaultMixin(String string, String string2, CallbackInfoReturnable<String> cir) {
         if (!autoTranslation$ready) return;
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        if (mc == null || mc.getOverlay() != null) return;
         if (!autoTranslation$unknownKeys.contains(string) && !TranslatorHelper.hasCache(string)) return;
         String returnValue = cir.getReturnValue();
         if (string.equals(returnValue) && autoTranslation$idPattern.matcher(string).matches()) {

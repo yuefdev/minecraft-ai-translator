@@ -39,7 +39,7 @@ public abstract class MutableComponentMixin {
     private void at$translateLiteral(CallbackInfoReturnable<ComponentContents> cir) {
         if (!(this.contents instanceof LiteralContents)) return;
         Engine engine = Engine.get();
-        if (engine == null || !engine.genericEnabled() || !GenericGate.screenAllowed()) return;
+        if (engine == null || !engine.displayGenericEnabled() || !GenericGate.screenAllowed()) return;
         String text = ((LiteralContents) this.contents).text();
         long generation = engine.generation();
         if (this.at$generation != generation || !text.equals(this.at$source)) {

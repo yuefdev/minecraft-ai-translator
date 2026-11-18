@@ -60,7 +60,9 @@ public class AutoTranslationMod {
 
             @Override
             public void runOnClientThread(Runnable task) {
-                Minecraft.getMinecraft().addScheduledTask(task);
+                Minecraft minecraft = Minecraft.getMinecraft();
+                if (minecraft == null) task.run();
+                else minecraft.addScheduledTask(task);
             }
 
             @Override
@@ -80,7 +82,7 @@ public class AutoTranslationMod {
         if (Boolean.getBoolean("autotranslation.smoketest")) {
             SmokeTest.register();
         }
-        CoreLog.info("AutoTranslation (Turkish pipeline) started for Minecraft 1.12.2");
+        CoreLog.info("AutoTranslation started for Minecraft 1.12.2");
     }
 
     private boolean pretranslationStarted;

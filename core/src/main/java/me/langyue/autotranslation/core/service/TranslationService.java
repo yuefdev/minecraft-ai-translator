@@ -30,8 +30,10 @@ import me.langyue.autotranslation.core.service.Types.TextRequest;
 import me.langyue.autotranslation.core.util.CoreLog;
 import me.langyue.autotranslation.core.util.Redactor;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,11 +41,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.concurrent.Executor;
 import java.util.function.LongSupplier;
@@ -335,6 +338,7 @@ public final class TranslationService implements AutoCloseable {
         final List<Integer> unresolved;
         final Map<String, Consumer<Result>> listeners = new ConcurrentHashMap<>();
         final AtomicInteger anonymousListeners = new AtomicInteger();
+        volatile Types.Priority priority;
         String failureDetail = "";
 
         Job(String key, TextRequest request, Prepared[] prepared, CacheKey[] keys, SegmentResult[] results,
@@ -345,12 +349,135 @@ public final class TranslationService implements AutoCloseable {
             this.keys = keys;
             this.results = results;
             this.unresolved = unresolved;
+            this.priority = request.priority();
         }
 
         void addListener(String listenerKey, Consumer<Result> listener) {
             if (listener == null) return;
             String id = listenerKey != null ? listenerKey : "#" + anonymousListeners.incrementAndGet();
             listeners.putIfAbsent(id, listener);
+        }
+    }
+
+    /**
+     * Bounded 3-lane FIFO queue ordered strictly by {@link Types.Priority}: HIGH (quests, books, live UI)
+     * -> NORMAL (requested language keys) -> LOW (background pretranslation). When full, higher-priority
+     * work evicts the oldest strictly-lower-priority queued job rather than stalling or dropping urgent text.
+     */
+    private static final class PriorityJobQueue {
+        private final ReentrantLock lock = new ReentrantLock();
+        private final Condition notEmpty = lock.newCondition();
+        private final Deque<Job> high = new ArrayDeque<>();
+        private final Deque<Job> normal = new ArrayDeque<>();
+        private final Deque<Job> low = new ArrayDeque<>();
+        private final int capacity;
+        private final AtomicInteger size = new AtomicInteger();
+
+        PriorityJobQueue(int capacity) {
+            this.capacity = Math.max(1, capacity);
+        }
+
+        int size() {
+            return size.get();
+        }
+
+        private Deque<Job> lane(Types.Priority p) {
+            if (p == Types.Priority.HIGH) return high;
+            if (p == Types.Priority.LOW) return low;
+            return normal;
+        }
+
+        private Job pollHighestLocked() {
+            Job j = high.pollFirst();
+            if (j != null) return j;
+            j = normal.pollFirst();
+            if (j != null) return j;
+            return low.pollFirst();
+        }
+
+        boolean offerOrEvict(Job job, Job[] evictedOut) {
+            lock.lock();
+            try {
+                if (size.get() >= capacity) {
+                    Job victim = null;
+                    if (job.priority == Types.Priority.HIGH) {
+                        victim = low.pollFirst();
+                        if (victim == null) victim = normal.pollFirst();
+                    } else if (job.priority == Types.Priority.NORMAL) {
+                        victim = low.pollFirst();
+                    }
+                    if (victim == null) return false;
+                    evictedOut[0] = victim;
+                    lane(job.priority).addLast(job);
+                    notEmpty.signal();
+                    return true;
+                }
+                lane(job.priority).addLast(job);
+                size.incrementAndGet();
+                notEmpty.signal();
+                return true;
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        boolean offerFirst(Job job) {
+            lock.lock();
+            try {
+                if (size.get() >= capacity) return false;
+                lane(job.priority).addFirst(job);
+                size.incrementAndGet();
+                notEmpty.signal();
+                return true;
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        void promote(Job job, Types.Priority target) {
+            if (target == null) return;
+            lock.lock();
+            try {
+                if (target.ordinal() < job.priority.ordinal()) {
+                    Deque<Job> oldLane = lane(job.priority);
+                    if (oldLane.remove(job)) {
+                        job.priority = target;
+                        lane(target).addLast(job);
+                        notEmpty.signal();
+                    }
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        Job pollNow() {
+            lock.lock();
+            try {
+                Job job = pollHighestLocked();
+                if (job != null) size.decrementAndGet();
+                return job;
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        Job poll(long timeout, TimeUnit unit) throws InterruptedException {
+            long nanos = unit.toNanos(timeout);
+            lock.lockInterruptibly();
+            try {
+                for (;;) {
+                    Job job = pollHighestLocked();
+                    if (job != null) {
+                        size.decrementAndGet();
+                        return job;
+                    }
+                    if (nanos <= 0L) return null;
+                    nanos = notEmpty.awaitNanos(nanos);
+                }
+            } finally {
+                lock.unlock();
+            }
         }
     }
 
@@ -398,13 +525,14 @@ public final class TranslationService implements AutoCloseable {
     /** Pause after a "daily quota used up" answer when the service does not say how long to wait. */
     static final long QUOTA_PAUSE_MILLIS = 15 * 60_000L;
     /** How long a worker waits for more short texts before it sends what it has. */
-    private static final long COALESCE_WINDOW_MILLIS = 150L;
+    private static final long COALESCE_HIGH_MILLIS = 45L;
+    private static final long COALESCE_WINDOW_MILLIS = 85L;
 
     private final Map<String, Prepared> preparedMemo = new ConcurrentHashMap<>();
     private final Map<String, Result> readyMemo = new ConcurrentHashMap<>();
     private final Map<String, Job> inflight = new ConcurrentHashMap<>();
     private final Map<String, Long> failures = new ConcurrentHashMap<>();
-    private final LinkedBlockingDeque<Job> queue;
+    private final PriorityJobQueue queue;
     private final ExecutorService workerPool;
     private final ExecutorService callPool;
     private volatile boolean closed = false;
@@ -447,7 +575,7 @@ public final class TranslationService implements AutoCloseable {
         this.sleeper = b.sleeper;
         this.rateLimiter = new RateLimiter(b.clock, b.sleeper);
         this.coalesce = b.coalesce;
-        this.queue = new LinkedBlockingDeque<>(Math.max(1, b.settings.queueCapacity()));
+        this.queue = new PriorityJobQueue(Math.max(1, b.settings.queueCapacity()));
         this.workerPool = Executors.newFixedThreadPool(b.workers, daemonFactory("AutoTranslation-Worker"));
         this.callPool = Executors.newCachedThreadPool(daemonFactory("AutoTranslation-Call"));
     }
@@ -570,7 +698,7 @@ public final class TranslationService implements AutoCloseable {
     public Result lookup(TextRequest request, Consumer<Result> onDone) {
         Settings st = settings;
         int n = request.segments().size();
-        if (!st.enabled() || n == 0) {
+        if (!st.enabled() || n == 0 || "en_us".equalsIgnoreCase(st.target().minecraftCode())) {
             return new Result(State.READY, Collections.nCopies(n, SegmentResult.ORIGINAL), false, "");
         }
         TranslationProvider provider = providerSupplier.get();
@@ -646,7 +774,7 @@ public final class TranslationService implements AutoCloseable {
             if (!degraded) remember(memoKeyText, ready);
             return ready;
         }
-        if (request.profile() == MaskProfile.PLAIN && clock.getAsLong() < packHoldUntil) {
+        if (request.profile() == MaskProfile.PLAIN && scope.startsWith("lang:") && clock.getAsLong() < packHoldUntil) {
             return new Result(State.PENDING, fillOriginal(results), false, "waiting for the shared pack");
         }
         if (provider == null || !provider.isConfigured()) {
@@ -659,20 +787,25 @@ public final class TranslationService implements AutoCloseable {
         StringBuilder jobKey = new StringBuilder(scope).append('|').append(request.profile());
         for (int index : unresolved) jobKey.append('|').append(keys[index].fingerprint());
         boolean[] rejected = {false};
+        Job[] evicted = {null};
         String key = jobKey.toString();
         inflight.compute(key, (k, existing) -> {
             if (existing != null) {
                 existing.addListener(request.listenerKey(), onDone);
+                queue.promote(existing, request.priority());
                 return existing;
             }
             Job job = new Job(k, request, prepared, keys, results, unresolved);
             job.addListener(request.listenerKey(), onDone);
-            if (!queue.offerLast(job)) {
+            if (!queue.offerOrEvict(job, evicted)) {
                 rejected[0] = true;
                 return null;
             }
             return job;
         });
+        if (evicted[0] != null) {
+            evictJob(evicted[0]);
+        }
         if (rejected[0]) {
             return new Result(State.FAILED, fillOriginal(results), false, "translation queue is full");
         }
@@ -723,7 +856,7 @@ public final class TranslationService implements AutoCloseable {
         while (!closed) {
             Job job;
             try {
-                job = queue.pollFirst(500, TimeUnit.MILLISECONDS);
+                job = queue.poll(500, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
                 return;
             }
@@ -774,10 +907,11 @@ public final class TranslationService implements AutoCloseable {
             for (int index : j.unresolved) chars += j.prepared[index].masked().masked().length();
             segments += j.unresolved.size();
         }
-        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(COALESCE_WINDOW_MILLIS);
+        long windowMillis = group.get(0).priority == Types.Priority.HIGH ? COALESCE_HIGH_MILLIS : COALESCE_WINDOW_MILLIS;
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(windowMillis);
         while (!closed) {
             long wait = deadline - System.nanoTime();
-            Job next = wait <= 0 ? queue.pollFirst() : queue.pollFirst(wait, TimeUnit.NANOSECONDS);
+            Job next = wait <= 0 ? queue.pollNow() : queue.poll(wait, TimeUnit.NANOSECONDS);
             if (next == null) return;
             int nextChars = 0;
             for (int index : next.unresolved) nextChars += next.prepared[index].masked().masked().length();
@@ -1078,6 +1212,32 @@ public final class TranslationService implements AutoCloseable {
         }
     }
 
+    private void evictJob(Job victim) {
+        List<Consumer<Result>> toNotify = new ArrayList<>();
+        inflight.computeIfPresent(victim.key, (k, v) -> {
+            if (v == victim) {
+                toNotify.addAll(victim.listeners.values());
+                return null;
+            }
+            return v;
+        });
+        if (toNotify.isEmpty()) return;
+        Result result = new Result(State.FAILED, fillOriginal(victim.results), true, "evicted by higher priority");
+        for (Consumer<Result> listener : toNotify) {
+            try {
+                callbackExecutor.execute(() -> {
+                    try {
+                        listener.accept(result);
+                    } catch (RuntimeException e) {
+                        CoreLog.warn("Translation listener failed", e);
+                    }
+                });
+            } catch (RuntimeException e) {
+                CoreLog.warn("Could not dispatch evicted translation result", e);
+            }
+        }
+    }
+
     @Override
     public void close() {
         closed = true;
@@ -1089,6 +1249,7 @@ public final class TranslationService implements AutoCloseable {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+        cache.flush();
         cache.compact();
     }
 }

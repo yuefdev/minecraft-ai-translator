@@ -80,12 +80,13 @@ public final class Engine {
     private volatile Secret apiKey = Secret.empty();
     private volatile GameLanguageIndex gameIndex = GameLanguageIndex.empty();
     private volatile Pretranslator pretranslator;
+    private final Thread shutdownHook;
     /** The language a shared pack was last asked for, and whether that is still being fetched. */
     private volatile String packLanguage;
     private volatile boolean packSyncing;
     private volatile boolean refreshRequested = false;
     private long lastRefreshMillis = 0L;
-    private String lastLanguage;
+    private volatile String lastLanguage;
 
     /** Creates the engine and makes it the {@linkplain #get() current} one. */
     public static Engine start(Platform platform, EngineSettings settings) {
@@ -108,12 +109,13 @@ public final class Engine {
         });
         secretStore = new SecretStore(platform.dataDir().resolve("secrets").resolve("api-key.txt"));
         apiKey = secretStore.load();
-        cache = new TranslationCache(platform.dataDir().resolve("cache").resolve("translations.jsonl"), settings.cacheMaxEntries);
+        cache = new TranslationCache(platform.dataDir().resolve("cache").resolve("translations.jsonl"), settings.cacheMaxEntries, true);
         cache.load();
         corrections = new CorrectionStore(platform.dataDir().resolve("corrections.json"));
         corrections.load();
         glossaryStore = new GlossaryStore(platform.dataDir().resolve("glossary.json"));
         glossary.replaceTerms(glossaryStore.load());
+        this.lastLanguage = normalizeLanguage(platform.languageCode());
         selection = select();
         openAi = buildOpenAiSettings();
         provider = new OpenAiCompatibleProvider(new java.util.function.Supplier<OpenAiSettings>() {
@@ -159,9 +161,19 @@ public final class Engine {
                         Engine.this.platform.runOnClientThread(command);
                     }
                 })
-                .workers(2)
+                .workers(Math.max(1, Math.min(8, settings.workerThreads <= 0 ? 4 : settings.workerThreads)))
                 .coalesceShortTexts(true)
                 .build();
+        this.shutdownHook = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                cache.flush();
+            }
+        }, "AutoTranslation-Shutdown");
+        try {
+            Runtime.getRuntime().addShutdownHook(this.shutdownHook);
+        } catch (IllegalStateException ignored) {
+        }
         CoreLog.info("Translation engine ready (cache: " + cache.size() + " entries, provider configured: "
                 + activeProvider().isConfigured() + ")");
         logSelection();
@@ -243,8 +255,13 @@ public final class Engine {
         }
     }
 
+    private static String normalizeLanguage(String code) {
+        if (code == null || Compat.isBlank(code)) return "en_us";
+        return code.trim().toLowerCase(Locale.ROOT).replace('-', '_');
+    }
+
     public boolean currentLanguageIsDefault() {
-        return "en_us".equalsIgnoreCase(platform.languageCode());
+        return "en_us".equals(normalizeLanguage(platform.languageCode()));
     }
 
     /** Switched on in the settings and the game is not running in the source language. */
@@ -262,6 +279,11 @@ public final class Engine {
 
     public boolean genericEnabled() {
         return active() && settings.translateGeneric;
+    }
+
+    /** Generic translation allowed right now for on-screen rendering (skips modpack loading overlays). */
+    public boolean displayGenericEnabled() {
+        return genericEnabled() && platform.isDisplayReady();
     }
 
     public boolean showOriginal() {
@@ -294,15 +316,26 @@ public final class Engine {
         return new HashSet<String>(hooksSeen);
     }
 
+    private void ensureLanguageSynced() {
+        String raw = platform.languageCode();
+        if (raw == null) return;
+        String normalized = raw.equals(lastLanguage) ? raw : normalizeLanguage(raw);
+        if (!normalized.equals(lastLanguage) || !normalized.equals(service.settings().target().minecraftCode())) {
+            synchronized (this) {
+                if (!normalized.equals(lastLanguage) || !normalized.equals(service.settings().target().minecraftCode())) {
+                    lastLanguage = normalized;
+                    applyConfig();
+                }
+            }
+        }
+        if (!normalized.equals(packLanguage) && !"en_us".equals(normalized)) {
+            syncSharedPack(normalized);
+        }
+    }
+
     /** Call once per client tick: refreshes open screens (at most every 400 ms) after translations arrived. */
     public void tick() {
-        String language = platform.languageCode();
-        if (language != null && !language.equals(lastLanguage)) {
-            boolean changed = lastLanguage != null;
-            lastLanguage = language;
-            if (changed) applyConfig(); // new target language: lookups are keyed by it, displays must be rebuilt
-        }
-        if (language != null) syncSharedPack(language.toLowerCase(Locale.ROOT));
+        ensureLanguageSynced();
         if (!refreshRequested) return;
         long now = System.currentTimeMillis();
         if (now - lastRefreshMillis < 400) return;
@@ -329,12 +362,12 @@ public final class Engine {
         final String url = settings.sharedPackUrl;
         if (!settings.sharedPacks || url == null || url.trim().isEmpty()) return;
         packSyncing = true;
-        service.holdForSharedPack(20_000L); // texts shown meanwhile wait a few seconds instead of costing requests
+        service.holdForSharedPack(5_000L); // language-file keys wait briefly for pack instead of costing requests
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    int timeout = Math.max(5, Math.min(300, settings.timeoutSeconds)) * 1000;
+                    int timeout = Math.max(3, Math.min(15, settings.timeoutSeconds)) * 1000;
                     me.langyue.autotranslation.core.pack.SharedPack pack = me.langyue.autotranslation.core.pack.PackDownloader
                             .sync(url, language, platform.dataDir().resolve("packs"), timeout);
                     if (pack != null && pack.size() > 0 && language.equals(packLanguage)) {
@@ -484,7 +517,12 @@ public final class Engine {
                 if (!lower.isEmpty() && lower.indexOf(' ') < 0) excluded.add(lower);
             }
         }
-        return new TextAnalyzer(settings.targetLanguageHint, excluded);
+        LanguageProfile target = LanguageProfile.of(platform.languageCode());
+        String hint = settings.targetLanguageHint;
+        if (!target.isTurkish() && EngineSettings.DEFAULT_TURKISH_HINT.equals(hint)) {
+            hint = null;
+        }
+        return new TextAnalyzer(hint, excluded);
     }
 
     /** Words that are the same in every language (key names, platform names, ...). */
@@ -518,7 +556,9 @@ public final class Engine {
 
     /** @return the translation, or null if the original must be shown (not ready, not needed, disabled, failed) */
     public String translate(String text, Content content, MaskProfile profile) {
-        if (text == null || text.isEmpty() || !active()) return null;
+        if (text == null || text.isEmpty()) return null;
+        ensureLanguageSynced();
+        if (!active()) return null;
         syncMemo();
         String memoKey = content.contentId() + '\u0001' + profile.ordinal() + '\u0001' + text;
         String memo = textMemo.get(memoKey);
@@ -539,7 +579,9 @@ public final class Engine {
      * and order; lines that need no translation are returned unchanged. Null if nothing is available yet.
      */
     public List<String> translateLines(List<String> lines, Content content, MaskProfile profile) {
-        if (lines == null || lines.isEmpty() || !active()) return null;
+        if (lines == null || lines.isEmpty()) return null;
+        ensureLanguageSynced();
+        if (!active()) return null;
         syncMemo();
         StringBuilder key = new StringBuilder(content.contentId()).append('\u0001').append(profile.ordinal());
         for (String line : lines) key.append('\u0001').append(line);
@@ -628,9 +670,14 @@ public final class Engine {
     }
 
     public void shutdown() {
+        try {
+            Runtime.getRuntime().removeShutdownHook(shutdownHook);
+        } catch (IllegalStateException ignored) {
+        }
         Pretranslator running = pretranslator;
         if (running != null) running.stop();
         service.close();
+        cache.close();
         io.shutdown();
         if (instance == this) instance = null;
     }

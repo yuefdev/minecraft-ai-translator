@@ -46,6 +46,7 @@ public final class TranslationBridge {
      * @return the translation, or null if the original must be shown (not ready yet, not needed, disabled, failed)
      */
     public static String translate(String text, Content content, MaskProfile profile) {
+        TranslationRuntime.ensureLanguageSynced();
         if (text == null || text.isEmpty() || !TranslationRuntime.active()) return null;
         syncMemo();
         String memoKey = content.contentId() + '\u0001' + profile.ordinal() + '\u0001' + text;
@@ -71,6 +72,7 @@ public final class TranslationBridge {
      * returned unchanged. Returns null if nothing is available yet.
      */
     public static List<String> translateLines(List<String> lines, Content content, MaskProfile profile) {
+        TranslationRuntime.ensureLanguageSynced();
         if (lines == null || lines.isEmpty() || !TranslationRuntime.active()) return null;
         syncMemo();
         StringBuilder key = new StringBuilder(content.contentId()).append('\u0001').append(profile.ordinal());

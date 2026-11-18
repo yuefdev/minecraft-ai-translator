@@ -20,6 +20,7 @@
     "MutableComponentMixin",
     "ScreenMixin",
     "TooltipMixin",
+    "TranslatableContentsMixin",
     "compat.patchouli.SpanMixin",
     "compat.patchouli.WordMixin"
   ],

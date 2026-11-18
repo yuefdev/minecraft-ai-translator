@@ -290,4 +290,36 @@ class EngineTest {
         assertTrue(e.isModLoaded("ftbquests"));
         assertFalse(e.isModLoaded("patchouli"));
     }
+
+    @Test
+    void earlyStartupDefaultLanguageSyncsToFrenchAndNeverCachesEnUs() throws Exception {
+        language = "en_us";
+        Engine e = newEngine();
+        assertEquals("en_us", e.service().settings().target().minecraftCode());
+
+        language = "fr_fr";
+        String translated = awaitTranslation(() -> e.translate("Collect iron ingots", content("q:fr1"), MaskProfile.FTB_RICH));
+        assertEquals("TR| Collect iron ingots", translated);
+        assertEquals("fr_fr", e.service().settings().target().minecraftCode());
+        assertEquals("fr", e.service().settings().target().providerCode());
+
+        e.shutdown();
+        engine = null;
+        String cacheContent = Files.readString(dir.resolve("AutoTranslation").resolve("cache").resolve("translations.jsonl"));
+        assertTrue(cacheContent.contains("\"l\":\"fr_fr\""), "expected French language tag in cache: " + cacheContent);
+        assertFalse(cacheContent.contains("\"l\":\"en_us\""), "cache must never store en_us as target language: " + cacheContent);
+    }
+
+    @Test
+    void legacyTranslationEscapesReversedTurkishAndSpacedFrenchPercentsForStringFormat() {
+        String tr = me.langyue.autotranslation.engine.TextSupport.appendOriginal("%50 daha fazla hasar", "Deals 50% more damage", true);
+        assertEquals("%50 daha fazla hasar §7* (Deals 50% more damage)", String.format(java.util.Locale.ROOT, tr));
+
+        String fr = me.langyue.autotranslation.engine.TextSupport.appendOriginal("Inflige 50 % de dégâts", "Deals 50% more damage", false);
+        assertEquals("Inflige 50 % de dégâts", String.format(java.util.Locale.ROOT, fr));
+
+        String preserved = me.langyue.autotranslation.engine.TextSupport.appendOriginal("TR| Gets 50% more %s", "Gets 50% more %s", true);
+        assertTrue(preserved.startsWith("TR| Gets 50% more %s"));
+        assertTrue(preserved.contains("§7* (Gets 50%% more %%s)"));
+    }
 }

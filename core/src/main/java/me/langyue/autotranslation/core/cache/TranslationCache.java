@@ -19,7 +19,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * Persistent cache of validated translations. Lookups are served from memory (never touching the disk or the
@@ -74,19 +78,45 @@ public final class TranslationCache {
 
     private final Path file;
     private final int maxEntries;
+    private final boolean asyncWrite;
     private final Map<String, Entry> entries = new ConcurrentHashMap<>();
     private final Object ioLock = new Object();
     private final AtomicLong appendedSinceCompaction = new AtomicLong();
+    private final ConcurrentLinkedQueue<String> pendingLines;
+    private final AtomicBoolean closed = new AtomicBoolean(false);
+    private final Thread writerThread;
     private volatile int skippedCorruptLines = 0;
 
     public TranslationCache(Path file, int maxEntries) {
+        this(file, maxEntries, false);
+    }
+
+    public TranslationCache(Path file, int maxEntries, boolean asyncWrite) {
         this.file = file;
         this.maxEntries = Math.max(100, maxEntries);
+        this.asyncWrite = asyncWrite;
+        if (asyncWrite) {
+            this.pendingLines = new ConcurrentLinkedQueue<String>();
+            Thread t = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    writerLoop();
+                }
+            }, "AutoTranslation-Cache");
+            t.setDaemon(true);
+            t.setPriority(Math.max(Thread.MIN_PRIORITY, Thread.NORM_PRIORITY - 1));
+            this.writerThread = t;
+            t.start();
+        } else {
+            this.pendingLines = null;
+            this.writerThread = null;
+        }
     }
 
     /** Reads the cache file. Corrupt lines (for example from a crash while writing) are skipped. */
     public void load() {
         synchronized (ioLock) {
+            if (pendingLines != null) pendingLines.clear();
             entries.clear();
             skippedCorruptLines = 0;
             if (!Files.exists(file)) return;
@@ -149,24 +179,88 @@ public final class TranslationCache {
         o.addProperty("pv", key.promptVersion());
         o.add("v", writeValue(value));
         o.addProperty("ts", now);
+        String line = GSON.toJson(o) + "\n";
+        if (asyncWrite && !closed.get()) {
+            pendingLines.offer(line);
+            LockSupport.unpark(writerThread);
+            return;
+        }
         synchronized (ioLock) {
+            appendLocked(line, 1);
+        }
+    }
+
+    /** Flushes any asynchronously queued cache entries to disk. */
+    public void flush() {
+        if (pendingLines == null) return;
+        synchronized (ioLock) {
+            flushPendingLocked();
+        }
+    }
+
+    /** Stops the background cache writer thread after flushing all pending entries. */
+    public void close() {
+        closed.set(true);
+        if (writerThread != null) {
+            LockSupport.unpark(writerThread);
             try {
-                Path parent = file.toAbsolutePath().getParent();
-                if (parent != null) Files.createDirectories(parent);
-                Compat.writeString(file, GSON.toJson(o) + "\n", StandardCharsets.UTF_8,
-                        StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-                if (appendedSinceCompaction.incrementAndGet() > maxEntries / 2L && entries.size() > maxEntries) {
-                    compactLocked();
-                }
-            } catch (IOException e) {
-                CoreLog.warn("Could not write translation cache " + file, e);
+                writerThread.join(2000L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
+        }
+        flush();
+    }
+
+    private void writerLoop() {
+        while (!closed.get() || !pendingLines.isEmpty()) {
+            if (pendingLines.isEmpty()) {
+                LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(50));
+                continue;
+            }
+            if (!closed.get() && pendingLines.size() < 64) {
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            flush();
+        }
+    }
+
+    private void flushPendingLocked() {
+        if (pendingLines == null || pendingLines.isEmpty()) return;
+        StringBuilder batch = new StringBuilder();
+        int count = 0;
+        String line;
+        while ((line = pendingLines.poll()) != null) {
+            batch.append(line);
+            count++;
+        }
+        if (count > 0) {
+            appendLocked(batch.toString(), count);
+        }
+    }
+
+    private void appendLocked(String content, int count) {
+        try {
+            Path parent = file.toAbsolutePath().getParent();
+            if (parent != null) Files.createDirectories(parent);
+            Compat.writeString(file, content, StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            if (appendedSinceCompaction.addAndGet(count) > maxEntries / 2L && entries.size() > maxEntries) {
+                compactLocked();
+            }
+        } catch (IOException e) {
+            CoreLog.warn("Could not write translation cache " + file, e);
         }
     }
 
     /** Rewrites the file with exactly the live entries (dropping the oldest ones above the size limit). */
     public void compact() {
         synchronized (ioLock) {
+            if (pendingLines != null) pendingLines.clear();
             compactLocked();
         }
     }

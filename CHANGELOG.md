@@ -1,3 +1,12 @@
+# V1.6.0 (Öncelikli çoklu iş parçacığı, tüm diller için dil algılama ve modpaketi kararlılığı)
+
+- NeoForge 26.1.2 / erken yüklenen ortamlar: mod kurulumu `Minecraft` nesnesinden önce çalıştığında hedef dilin `"en_us"` olarak kalıp önbelleğe `"l": "en_us"` yazması ve FTB Quests çevirilerinin başlamaması düzeltildi (`ensureLanguageSynced` + `"en_us"` koruması).
+- Çok dilli metin analizi ve dil dosyası indeksleme: Türkçe dışındaki dillerde (`fr_fr`, `de_de`, `es_es`, `pt_br`, `it_it`, Kiril, CJK, Arapça vb.) varsayılan Türkçe ipucu devre dışı bırakıldı; `1.16.5`–`26.1.2` sürümlerinde oyunun ve modların halihazırda çevrilmiş dil anahtarları elenerek `GameLanguageIndex` sözlük ipuçları arka planda indeksleniyor.
+- Modpaketi açılış kararlılığı (1.21.1 NeoForge vb.): `LoadingOverlay` etkinken genel çeviri kancaları tamamen pasif tutularak paralel kaynak yükleme iş parçacıklarındaki takılmalar önlendi; `1.20.1` dil yükleme taraması $O(N^2)$'den $O(1)$'e indirildi.
+- Printf `%` koruması: çevirilerde oluşan `"%50 daha..."` veya `"50 % de..."` gibi ifadelerin `I18n.get` / `String.format` içinde `IllegalFormatException` fırlatması `TextSupport.sanitizePrintf` ile engellendi.
+- 3 şeritli öncelik kuyruğu ve paralel çeviri (`workerThreads = 4`): FTB Quests, Patchouli ve açık ekran metinleri (`HIGH`) dil dosyası anahtarlarının (`NORMAL`) ve arka plan ön-çevirisinin (`LOW`) önüne geçer; kuyruk doluyken düşük öncelikli işleri tahliye eder.
+- Asenkron toplu önbellek yazımı (`AutoTranslation-Cache`) ve `TranslatableContentsMixin` ile çeviri geldiğinde açık bileşenlerin anında yenilenmesi eklendi; NeoForge 26.1.2 (FML 11.x) için `FMLLoader.getCurrent()` desteği eklendi.
+
 # V1.5.0 (Fabric desteği)
 
 - Fabric sürümleri: 1.16.5, 1.18.2, 1.19.2, 1.20.1, 1.21.1 ve 26.1.2. Kod aynı sürümün Forge/NeoForge koduyla ortaktır; FTB Quests ve Patchouli (26.1.2'de yalnızca FTB Quests) entegrasyonları dahildir.

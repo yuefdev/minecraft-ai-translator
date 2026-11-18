@@ -34,6 +34,13 @@ public final class Types {
         FAILED
     }
 
+    /** Scheduling priority of a translation request. Higher priority jumps ahead and can evict background pretranslation. */
+    public enum Priority {
+        HIGH,
+        NORMAL,
+        LOW
+    }
+
     /** One text of a request: plain text, or the runs of a styled component. */
     public static final class Segment {
         private final String text;
@@ -145,12 +152,28 @@ public final class Types {
         private final Content content;
         private final MaskProfile profile;
         private final String listenerKey;
+        private final Priority priority;
 
         public TextRequest(List<Segment> segments, Content content, MaskProfile profile, String listenerKey) {
+            this(segments, content, profile, listenerKey, inferPriority(content, profile, listenerKey));
+        }
+
+        public TextRequest(List<Segment> segments, Content content, MaskProfile profile, String listenerKey, Priority priority) {
             this.segments = segments;
             this.content = content;
             this.profile = profile;
             this.listenerKey = listenerKey;
+            this.priority = priority != null ? priority : inferPriority(content, profile, listenerKey);
+        }
+
+        public static Priority inferPriority(Content content, MaskProfile profile, String listenerKey) {
+            if (listenerKey != null && (listenerKey.startsWith("pre:") || listenerKey.startsWith("bulk:"))) {
+                return Priority.LOW;
+            }
+            if (content != null && content.contentId() != null && content.contentId().startsWith("lang:")) {
+                return Priority.NORMAL;
+            }
+            return Priority.HIGH;
         }
 
         public List<Segment> segments() {
@@ -169,22 +192,26 @@ public final class Types {
             return listenerKey;
         }
 
+        public Priority priority() {
+            return priority;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             TextRequest other = (TextRequest) o;
-            return java.util.Objects.equals(segments, other.segments) && java.util.Objects.equals(content, other.content) && java.util.Objects.equals(profile, other.profile) && java.util.Objects.equals(listenerKey, other.listenerKey);
+            return java.util.Objects.equals(segments, other.segments) && java.util.Objects.equals(content, other.content) && java.util.Objects.equals(profile, other.profile) && java.util.Objects.equals(listenerKey, other.listenerKey) && priority == other.priority;
         }
 
         @Override
         public int hashCode() {
-            return java.util.Objects.hash(segments, content, profile, listenerKey);
+            return java.util.Objects.hash(segments, content, profile, listenerKey, priority);
         }
 
         @Override
         public String toString() {
-            return "TextRequest[" + "segments=" + segments + ", " + "content=" + content + ", " + "profile=" + profile + ", " + "listenerKey=" + listenerKey + "]";
+            return "TextRequest[" + "segments=" + segments + ", " + "content=" + content + ", " + "profile=" + profile + ", " + "listenerKey=" + listenerKey + ", priority=" + priority + "]";
         }
     }
 

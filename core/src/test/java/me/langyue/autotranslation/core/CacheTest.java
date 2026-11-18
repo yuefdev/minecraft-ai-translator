@@ -137,4 +137,32 @@ class CacheTest {
         again.load();
         assertNull(again.find("Chest", null));
     }
+
+    @Test
+    void asyncWriteBatchesAndFlushesCleanlyAcrossRestart() throws Exception {
+        Path file = dir.resolve("async-cache.jsonl");
+        TranslationCache cache = new TranslationCache(file, 1000, true);
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(4);
+        try {
+            List<java.util.concurrent.Callable<Void>> tasks = new java.util.ArrayList<>();
+            for (int i = 0; i < 50; i++) {
+                final int idx = i;
+                tasks.add(() -> {
+                    cache.put(key("async text " + idx, "fr_fr", "ftbquests:q:" + idx, "gemini", "g3", "g1", "p1"),
+                            StoredTranslation.plain("texte " + idx));
+                    return null;
+                });
+            }
+            for (var f : pool.invokeAll(tasks)) f.get();
+        } finally {
+            pool.shutdownNow();
+        }
+        cache.close();
+
+        TranslationCache reloaded = new TranslationCache(file, 1000);
+        reloaded.load();
+        assertEquals(50, reloaded.size());
+        assertEquals("texte 0", reloaded.get(key("async text 0", "fr_fr", "ftbquests:q:0", "gemini", "g3", "g1", "p1")).text());
+        assertEquals("texte 49", reloaded.get(key("async text 49", "fr_fr", "ftbquests:q:49", "gemini", "g3", "g1", "p1")).text());
+    }
 }

@@ -1,3 +1,12 @@
+# V1.6.0 (Priority multi-threading, multi-language detection and modpack stability)
+
+- NeoForge 26.1.2 / early mod construction: fixed target language staying stuck at `"en_us"` (writing `"l": "en_us"` to `translations.jsonl` and leaving FTB Quests untranslated) when the mod was constructed before `Minecraft` initialized (`ensureLanguageSynced` + `"en_us"` guard).
+- Multi-language detection and language-file indexing: disabled the default Turkish hint regex for non-Turkish languages (`fr_fr`, `de_de`, `es_es`, `pt_br`, `it_it`, Cyrillic, CJK, Arabic, etc.); `1.16.5`–`26.1.2` now index vanilla and mod language files in the background to skip already-localized keys and populate `GameLanguageIndex` glossary hints.
+- Modpack start-up stability (NeoForge 1.21.1, etc.): generic hooks stay dormant while `LoadingOverlay` is active so parallel resource-reload worker threads are untouched; fixed an $O(N^2)$ key lookup during `1.20.1` language loading.
+- Printf `%` protection: `TextSupport.sanitizePrintf` escapes accidental format specifiers introduced by translations (such as `"%50..."` or French `"50 % de..."`) so `I18n.get` / `String.format` never throws `IllegalFormatException`.
+- 3-lane priority queue and parallel workers (`workerThreads = 4`): FTB Quests, Patchouli and active screen text (`HIGH`) jump ahead of generic language keys (`NORMAL`) and background pre-translation (`LOW`), evicting lower-priority queued jobs when full.
+- Added asynchronous batched cache writes (`AutoTranslation-Cache`), live component refresh via `TranslatableContentsMixin`, and FancyModLoader 11.x (`FMLLoader.getCurrent()`) support on NeoForge 26.1.2.
+
 # V1.5.0 (Fabric support)
 
 - Fabric builds for 1.16.5, 1.18.2, 1.19.2, 1.20.1, 1.21.1 and 26.1.2. The code is shared with the Forge/NeoForge build of the same version, including the FTB Quests and Patchouli integrations (FTB Quests only on 26.1.2).

@@ -17,4 +17,12 @@ public interface Platform {
     void runOnClientThread(Runnable task);
 
     boolean isModLoaded(String modId);
+
+    /**
+     * True once the game's loading overlay / resource reload has finished and normal UI can be shown.
+     * Generic language-file hooks stay idle while {@code false} so parallel mod-loading threads are untouched.
+     */
+    default boolean isDisplayReady() {
+        return true;
+    }
 }

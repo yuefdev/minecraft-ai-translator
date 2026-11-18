@@ -29,6 +29,8 @@ import java.util.List;
  * the client). Ids, dependencies, tasks, rewards and progress are not touched.
  */
 public final class FtbQuestsSupport {
+    private static volatile boolean loggedEditPause;
+
     private FtbQuestsSupport() {
     }
 
@@ -38,7 +40,16 @@ public final class FtbQuestsSupport {
         if (engine == null || !engine.questsEnabled()) return false;
         if (engine.settings().pauseWhileEditingQuests) {
             try {
-                if (ClientQuestFile.exists() && ClientQuestFile.getInstance().canEdit()) return false;
+                if (ClientQuestFile.exists()) {
+                    if (ClientQuestFile.getInstance().canEdit()) {
+                        if (!loggedEditPause) {
+                            loggedEditPause = true;
+                            CoreLog.info("FTB Quests edit mode (/ftbquests editing_mode) is active; quest translation is paused while editing (set pauseWhileEditingQuests=false in settings.json to translate anyway)");
+                        }
+                        return false;
+                    }
+                    loggedEditPause = false;
+                }
             } catch (Throwable ignored) {
                 // never let a context check break the quest screen
             }

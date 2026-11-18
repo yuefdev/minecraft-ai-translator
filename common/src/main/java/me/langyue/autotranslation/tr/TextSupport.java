@@ -10,18 +10,24 @@ public final class TextSupport {
     private TextSupport() {
     }
 
+    /** Escapes accidental printf specifiers introduced by translation. */
+    public static String sanitizePrintf(String translation, String original) {
+        return me.langyue.autotranslation.engine.TextSupport.sanitizePrintf(translation, original);
+    }
+
     /** Appends the English original in gray after a language-file translation (upstream format). */
     public static String appendOriginal(String translation, String original, boolean append) {
-        if (!append) return translation;
+        String safe = sanitizePrintf(translation, original);
+        if (!append) return safe;
         // the result is later used as a printf format string, so the appended original must not add placeholders
         String escaped = original.replace("%%", "%").replace("%", "%%");
-        if (!translation.contains("\n")) {
-            return translation + " §7* (" + escaped + ")";
+        if (!safe.contains("\n")) {
+            return safe + " §7* (" + escaped + ")";
         }
-        String[] t = translation.split("\n");
+        String[] t = safe.split("\n");
         String[] o = escaped.split("\n");
         if (t.length != o.length) {
-            return translation + " §7* (" + escaped + ")";
+            return safe + " §7* (" + escaped + ")";
         }
         StringBuilder r = new StringBuilder();
         for (int i = 0; i < t.length; i++) {

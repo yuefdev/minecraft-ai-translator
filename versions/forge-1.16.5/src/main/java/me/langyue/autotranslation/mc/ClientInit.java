@@ -60,19 +60,30 @@ public final class ClientInit {
 
             @Override
             public void runOnClientThread(Runnable task) {
-                Minecraft.getInstance().execute(task);
+                Minecraft minecraft = Minecraft.getInstance();
+                if (minecraft == null) task.run();
+                else minecraft.execute(task);
             }
 
             @Override
             public boolean isModLoaded(String modId) {
                 return isModLoaded.test(modId);
             }
+
+            @Override
+            public boolean isDisplayReady() {
+                Minecraft minecraft = Minecraft.getInstance();
+                return minecraft != null && minecraft.options != null && minecraft.getOverlay() == null;
+            }
         };
         EngineSettings settings = new SettingsStore(dir.resolve("settings.json")).load();
         Engine engine = Engine.start(platform, settings);
         onClientTick.accept(() -> {
             Engine current = Engine.get();
-            if (current != null) current.tick();
+            if (current != null) {
+                me.langyue.autotranslation.mc.generic.GenericLanguage.syncIfNeeded(current);
+                current.tick();
+            }
         });
 
         if (engine.isModLoaded("ftbquests")) {
@@ -84,7 +95,7 @@ public final class ClientInit {
         if (Boolean.getBoolean("autotranslation.smoketest")) {
             me.langyue.autotranslation.mc.smoke.SmokeTest.register(onClientTick);
         }
-        CoreLog.info("AutoTranslation (Turkish pipeline) started for Minecraft 1.16.5");
+        CoreLog.info("AutoTranslation started for Minecraft 1.16.5");
         LOGGER.info("AutoTranslation started; data folder: {}", dir);
     }
 }

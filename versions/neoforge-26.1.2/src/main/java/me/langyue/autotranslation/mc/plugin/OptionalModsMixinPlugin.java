@@ -55,7 +55,15 @@ public final class OptionalModsMixinPlugin implements IMixinConfigPlugin {
         Object list = null;
         try {
             Class<?> fmlLoader = Class.forName("net.neoforged.fml.loading.FMLLoader");
-            list = fmlLoader.getMethod("getLoadingModList").invoke(null);
+            try {
+                Object current = fmlLoader.getMethod("getCurrent").invoke(null);
+                if (current != null) list = current.getClass().getMethod("getLoadingModList").invoke(current);
+            } catch (ReflectiveOperationException | RuntimeException ignored) {
+                // FML < 11 uses static FMLLoader.getLoadingModList()
+            }
+            if (list == null) {
+                list = fmlLoader.getMethod("getLoadingModList").invoke(null);
+            }
         } catch (ReflectiveOperationException | RuntimeException e) {
             // fall through to the other accessor
         }

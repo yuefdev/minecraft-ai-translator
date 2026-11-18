@@ -59,6 +59,7 @@ public final class TranslationRuntime {
     });
     private static volatile boolean refreshRequested = false;
     private static long lastRefreshMillis = 0L;
+    private static volatile String lastLanguage = "";
 
     private TranslationRuntime() {
     }
@@ -80,8 +81,9 @@ public final class TranslationRuntime {
         secretStore = new SecretStore(AutoTranslation.ROOT.resolve("secrets").resolve("api-key.txt"));
         apiKey = secretStore.load();
         cache = new TranslationCache(AutoTranslation.ROOT.resolve("cache").resolve("translations.jsonl"),
-                settings.cacheMaxEntries);
+                settings.cacheMaxEntries, true);
         cache.load();
+        lastLanguage = LanguageProfile.of(AutoTranslation.getLanguage()).minecraftCode();
         corrections = new CorrectionStore(AutoTranslation.ROOT.resolve("corrections.json"));
         corrections.load();
         glossaryStore = new GlossaryStore(AutoTranslation.ROOT.resolve("glossary.json"));
@@ -103,9 +105,17 @@ public final class TranslationRuntime {
                 .gameLanguage(() -> gameIndex)
                 .analyzer(buildAnalyzer())
                 .callbackExecutor(TranslationRuntime::runOnClientThread)
-                .workers(2)
+                .workers(Math.max(1, Math.min(8, settings.workerThreads <= 0 ? 4 : settings.workerThreads)))
                 .coalesceShortTexts(true)
                 .build();
+
+        Thread shutdownHook = new Thread(() -> {
+            if (cache != null) cache.flush();
+        }, "AutoTranslation-Shutdown");
+        try {
+            Runtime.getRuntime().addShutdownHook(shutdownHook);
+        } catch (IllegalStateException ignored) {
+        }
 
         ClientTickEvent.CLIENT_POST.register(TranslationRuntime::tick);
         if (Boolean.getBoolean("autotranslation.smoketest")) {
@@ -219,7 +229,17 @@ public final class TranslationRuntime {
         return new HashSet<>(HOOKS_SEEN);
     }
 
+    public static synchronized void ensureLanguageSynced() {
+        if (service == null) return;
+        String current = LanguageProfile.of(AutoTranslation.getLanguage()).minecraftCode();
+        if (!current.equals(lastLanguage) || !current.equalsIgnoreCase(service.settings().target().minecraftCode())) {
+            lastLanguage = current;
+            applyConfig();
+        }
+    }
+
     private static void tick(Minecraft minecraft) {
+        ensureLanguageSynced();
         if (!refreshRequested) return;
         long now = System.currentTimeMillis();
         if (now - lastRefreshMillis < 400) return; // batch bursts of arrivals into one screen refresh
@@ -365,7 +385,12 @@ public final class TranslationRuntime {
             String lower = word.toLowerCase(java.util.Locale.ROOT).trim();
             if (!lower.isEmpty() && lower.indexOf(' ') < 0) excluded.add(lower);
         }
-        return new TextAnalyzer(AutoTranslation.CONFIG.yourLanguageFeature, excluded);
+        String hint = AutoTranslation.CONFIG.yourLanguageFeature;
+        if (!LanguageProfile.of(AutoTranslation.getLanguage()).isTurkish()
+                && me.langyue.autotranslation.engine.EngineSettings.DEFAULT_TURKISH_HINT.equals(hint)) {
+            hint = null;
+        }
+        return new TextAnalyzer(hint, excluded);
     }
 
     /** True if a mod with this id is loaded (safe to call before the mod list is complete). */
