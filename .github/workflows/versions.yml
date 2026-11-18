@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 5
       matrix:
         include:
           - module: forge-1.19.2
@@ -65,8 +66,15 @@ jobs:
     steps:
       - name: Check out
         run: git clone --quiet --depth 1 --branch "$GITHUB_REF_NAME" "https://x-access-token:${{ github.token }}@github.com/$GITHUB_REPOSITORY.git" . 
+      - name: Install Java 8 for 1.12.2
+        if: matrix.module == 'forge-1.12.2'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '8'
       - name: Select Java and Gradle
         run: |
+          if [ "${{ matrix.module }}" = "forge-1.12.2" ] && [ -z "${JAVA_HOME_8_X64:-}" ] && [ -n "${JAVA_HOME:-}" ]; then echo "JAVA_HOME_8_X64=$JAVA_HOME" >> "$GITHUB_ENV"; fi
           jh="JAVA_HOME_${{ matrix.java }}_X64"; echo "JAVA_HOME=${!jh}" >> "$GITHUB_ENV"; echo "${!jh}/bin" >> "$GITHUB_PATH"
           if [ -n "${{ matrix.gradle }}" ]; then
             curl -fsSL "https://services.gradle.org/distributions/gradle-${{ matrix.gradle }}-bin.zip" -o /tmp/gradle.zip
@@ -77,8 +85,18 @@ jobs:
         run: |
           chmod +x gradlew
           if [ -n "${{ matrix.gradle }}" ]; then GRADLE=gradle; else GRADLE=./gradlew; fi
-          $GRADLE -p versions/${{ matrix.module }} build --no-daemon --console=plain > build.log 2>&1
-          echo "exit=$?" > build.status
+          for attempt in 1 2 3; do
+            $GRADLE -p versions/${{ matrix.module }} build --no-daemon --console=plain > build.log 2>&1
+            rc=$?
+            echo "exit=$rc" > build.status
+            if [ "$rc" -eq 0 ]; then break; fi
+            if [ "$attempt" -lt 3 ] && grep -qE "429|Could not GET|Could not resolve|Could not find|Could not parse POM|Connection reset|Read timed out" build.log; then
+              echo "transient maven problem on attempt $attempt, retrying after 20s..."
+              sleep 20
+              continue
+            fi
+            break
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -98,6 +116,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
+      max-parallel: 5
       matrix:
         module: [forge-1.19.2, forge-1.18.2, forge-1.16.5, neoforge-1.21.1, forge-1.12.2, neoforge-26.1.2, fabric-1.16.5, fabric-1.18.2, fabric-1.19.2, fabric-1.21.1, fabric-26.1.2]
         variant: [plain, with-ftbquests-patchouli]
@@ -138,8 +157,15 @@ jobs:
     steps:
       - name: Check out
         run: git clone --quiet --depth 1 --branch "$GITHUB_REF_NAME" "https://x-access-token:${{ github.token }}@github.com/$GITHUB_REPOSITORY.git" .
+      - name: Install Java 8 for 1.12.2
+        if: matrix.module == 'forge-1.12.2'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '8'
       - name: Select Java and Gradle, install headless display
         run: |
+          if [ "${{ matrix.module }}" = "forge-1.12.2" ] && [ -z "${JAVA_HOME_8_X64:-}" ] && [ -n "${JAVA_HOME:-}" ]; then echo "JAVA_HOME_8_X64=$JAVA_HOME" >> "$GITHUB_ENV"; fi
           jh="JAVA_HOME_${{ matrix.java }}_X64"; echo "JAVA_HOME=${!jh}" >> "$GITHUB_ENV"; echo "${!jh}/bin" >> "$GITHUB_PATH"
           if [ -n "${{ matrix.gradle }}" ]; then
             curl -fsSL "https://services.gradle.org/distributions/gradle-${{ matrix.gradle }}-bin.zip" -o /tmp/gradle.zip
@@ -165,7 +191,7 @@ jobs:
           set +e
           ( while sleep 120; do echo "--- progress $(date +%T): $(wc -l < smoke.log) log lines ---"; done ) &
           ticker=$!
-          for attempt in 1 2; do
+          for attempt in 1 2 3; do
             rm -f smoke.exit
             # own process group, so that a crashed game (which waits on its error screen) can be stopped at once
             setsid bash -c "timeout 900 xvfb-run -a -s '-screen 0 1280x720x24' $GRADLE -p $MODULE $TASK $extra --no-daemon --console=plain > smoke.log 2>&1; echo \$? > smoke.exit" &
@@ -180,9 +206,9 @@ jobs:
               fi
             done
             echo "=== attempt $attempt gradle exit code: $(cat smoke.exit) ==="
-            # a download hiccup of Mojang's or a maven host is not a result: try once more
-            if [ ! -f $MODULE/build/smoke/result.json ] && grep -qE "DownloadException|Could not GET|Could not resolve|Connection reset|Read timed out" smoke.log; then
-              echo "transient download problem, retrying once"; continue
+            # a download hiccup of Mojang's or a maven host is not a result: try again
+            if [ ! -f $MODULE/build/smoke/result.json ] && [ "$attempt" -lt 3 ] && grep -qE "429|DownloadException|Could not GET|Could not resolve|Could not find|Could not parse POM|Connection reset|Read timed out" smoke.log; then
+              echo "transient download problem on attempt $attempt, retrying after 20s"; sleep 20; continue
             fi
             break
           done

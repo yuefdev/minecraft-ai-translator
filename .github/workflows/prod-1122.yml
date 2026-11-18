@@ -33,12 +33,24 @@ jobs:
       - name: Check out
         run: git clone --quiet --depth 1 --branch "$GITHUB_REF_NAME" "https://x-access-token:${{ github.token }}@github.com/$GITHUB_REPOSITORY.git" .
 
+      - name: Install Java 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '8'
+
       - name: Build the release jar
         run: |
+          if [ -z "${JAVA_HOME_8_X64:-}" ] && [ -n "${JAVA_HOME:-}" ]; then echo "JAVA_HOME_8_X64=$JAVA_HOME" >> "$GITHUB_ENV"; fi
           export JAVA_HOME=$JAVA_HOME_25_X64; export PATH=$JAVA_HOME/bin:$PATH
           curl -fsSL https://services.gradle.org/distributions/gradle-9.8.1-bin.zip -o /tmp/gradle.zip
           sudo unzip -q /tmp/gradle.zip -d /opt
-          /opt/gradle-9.8.1/bin/gradle -p versions/forge-1.12.2 build --no-daemon --console=plain > build.log 2>&1 || { tail -n 40 build.log; exit 1; }
+          ok=0
+          for attempt in 1 2 3; do
+            if /opt/gradle-9.8.1/bin/gradle -p versions/forge-1.12.2 build --no-daemon --console=plain > build.log 2>&1; then ok=1; break; fi
+            if [ "$attempt" -lt 3 ]; then echo "build attempt $attempt failed, retrying in 20s..."; sleep 20; fi
+          done
+          [ "$ok" -eq 1 ] || { tail -n 40 build.log; exit 1; }
           ls -l versions/forge-1.12.2/build/libs
 
       - name: Inspect the release jar
